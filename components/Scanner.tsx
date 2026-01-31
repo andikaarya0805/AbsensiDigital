@@ -20,6 +20,9 @@ export default function Scanner({ onScanSuccess, onScanError }: ScannerProps) {
                 fps: 10,
                 qrbox: { width: 250, height: 250 },
                 aspectRatio: 1.0,
+                // Enable both camera and file scanning
+                rememberLastUsedCamera: true,
+                showTorchButtonIfSupported: true,
                 // Request back camera but don't force 'exact' for better compatibility
                 videoConstraints: {
                     facingMode: "environment"
@@ -30,8 +33,13 @@ export default function Scanner({ onScanSuccess, onScanError }: ScannerProps) {
 
         scannerRef.current.render(
             (decodedText) => {
-                // Stop scanning immediately to prevent loops
-                scannerRef.current?.pause(true);
+                // Stop scanning - wrap in try-catch for file scan mode
+                try {
+                    scannerRef.current?.pause(true);
+                } catch (e) {
+                    // File scan mode doesn't need pause
+                    console.log('File scan completed');
+                }
                 onScanSuccess(decodedText);
             },
             (errorMessage) => {

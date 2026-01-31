@@ -74,14 +74,9 @@ export default function LoginPage() {
             if (profileError) throw profileError;
             if (!profile) throw new Error('Profil tidak ditemukan. Hubungi Admin.');
 
-            // 1. Device Binding Check
-            if (profile.device_id && profile.device_id !== deviceId) {
-                await supabase.auth.signOut();
-                throw new Error('This account is strictly bound to another device. Please contact administration.');
-            }
-
-            // 2. Bind device if first time
-            if (!profile.device_id) {
+            // 1. Auto-Bind Device (Relaxed Rule)
+            // Always update to the current deviceId on login.
+            if (profile.device_id !== deviceId) {
                 await supabase
                     .from('profiles')
                     .update({ device_id: deviceId })

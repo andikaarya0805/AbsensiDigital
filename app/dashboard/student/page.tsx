@@ -15,7 +15,7 @@ import {
 
 // Mock Class Coordinates (e.g., School Yard)
 const CLASS_COORDS = { lat: -6.200000, lon: 106.816666 };
-const MAX_DISTANCE = 100000; // 100km (Temporary for easier testing)
+const MAX_DISTANCE = 20; // 20 meters strict radius
 
 export default function StudentDashboard() {
     const [user, setUser] = useState<any>(null);
@@ -66,27 +66,60 @@ export default function StudentDashboard() {
         setStatus('scanning');
 
         try {
-            // 1. Geofencing check
-            if (!coords) throw new Error("Please enable location to scan.");
+            // 1. Validate QR Token (check if it's still valid)
+            const QR_VALIDITY_SECONDS = 120; // Must match teacher's setting (2 minutes)
+            const SECRET = "HADIRMU_SECRET_123";
 
-            const distance = calculateDistance(
-                coords.lat,
-                coords.lon,
-                CLASS_COORDS.lat,
-                CLASS_COORDS.lon
-            );
+            // Expected format: HADIR_SESSION_{timestamp}_{secret}
+            const parts = decodedText.split('_');
+            console.log('Scanned QR:', decodedText);
+            console.log('Parts:', parts);
 
-            if (distance > MAX_DISTANCE) {
-                throw new Error(`Out of range. You are ${Math.round(distance)}m away from class.`);
+            if (parts.length < 4 || parts[0] !== 'HADIR' || parts[1] !== 'SESSION') {
+                throw new Error('QR Code tidak valid! (format salah)');
             }
 
-            // 2. Submit Attendance
+            const scannedTimestamp = parseInt(parts[2]);
+            // Secret contains underscores, so join remaining parts
+            const scannedSecret = parts.slice(3).join('_');
+
+            console.log('Scanned Secret:', scannedSecret, '| Expected:', SECRET);
+            console.log('Scanned Timestamp:', scannedTimestamp);
+
+            // Validate secret
+            if (scannedSecret !== SECRET) {
+                throw new Error(`QR Code tidak valid! (secret: ${scannedSecret})`);
+            }
+
+            // Validate timestamp (check if within valid window)
+            const currentTimestamp = Math.floor(Date.now() / (QR_VALIDITY_SECONDS * 1000));
+            console.log('Current Timestamp:', currentTimestamp);
+
+            if (scannedTimestamp !== currentTimestamp) {
+                throw new Error(`QR Code sudah kadaluarsa! (${scannedTimestamp} vs ${currentTimestamp})`);
+            }
+
+            // 2. Geofencing check (DISABLED by User Request)
+            // if (!coords) throw new Error("Please enable location to scan.");
+
+            // const distance = calculateDistance(
+            //     coords.lat,
+            //     coords.lon,
+            //     CLASS_COORDS.lat,
+            //     CLASS_COORDS.lon
+            // );
+
+            // if (distance > MAX_DISTANCE) {
+            //     throw new Error(`Out of range. You are ${Math.round(distance)}m away from class.`);
+            // }
+
+            // 3. Submit Attendance
             console.log("Submitting attendance for:", user.id);
             const { data, error: attError } = await supabase
                 .from('attendance')
                 .insert({
                     student_id: user.id,
-                    status: 'present',
+                    status: 'present'
                 })
                 .select(); // Select to ensure it's working
 
@@ -97,12 +130,17 @@ export default function StudentDashboard() {
 
             console.log("Attendance recorded:", data);
             setStatus('success');
-            setMessage('Attendance recorded successfully!');
+            setMessage('Presensi berhasil dicatat!');
         } catch (err: any) {
             console.error("HandleScan Error:", err.message);
             setStatus('error');
             setMessage(err.message);
-            // Don't auto-reset to idle, let user retry manually or refresh
+
+            // Auto-reset after 3 seconds to allow scanning again
+            setTimeout(() => {
+                setStatus('idle');
+                window.location.reload(); // Reload to reset scanner
+            }, 3000);
             // to avoid infinite loops if it's a persistent error.
         }
     };
