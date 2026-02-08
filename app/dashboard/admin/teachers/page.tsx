@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
     Plus,
     Search,
@@ -20,6 +21,8 @@ import {
 import { createClient } from '@/lib/supabase';
 import { useToast } from '@/components/Toast';
 
+import ConfirmationModal from '@/components/ConfirmationModal';
+
 export default function TeachersPage() {
     const [teachers, setTeachers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -35,12 +38,26 @@ export default function TeachersPage() {
     });
     const [isSaving, setIsSaving] = useState(false);
 
+    // Delete Confirmation State
+    const [deleteModal, setDeleteModal] = useState<{ show: boolean; teacherId: string | null; teacherName: string; loading: boolean }>({
+        show: false,
+        teacherId: null,
+        teacherName: '',
+        loading: false
+    });
+
     const supabase = createClient();
     const { showToast } = useToast();
+    const searchParams = useSearchParams();
 
     useEffect(() => {
         fetchTeachers();
-    }, []);
+        if (searchParams.get('action') === 'new') {
+            setShowModal(true);
+        }
+        const q = searchParams.get('q');
+        if (q) setSearchTerm(q);
+    }, [searchParams]);
 
     const fetchTeachers = async () => {
         setLoading(true);
@@ -100,13 +117,24 @@ export default function TeachersPage() {
         setIsSaving(false);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Apakah Anda yakin ingin menghapus guru ini?')) return;
+    const confirmDelete = (teacher: any) => {
+        setDeleteModal({
+            show: true,
+            teacherId: teacher.id,
+            teacherName: teacher.full_name,
+            loading: false
+        });
+    };
+
+    const handleDelete = async () => {
+        if (!deleteModal.teacherId) return;
+
+        setDeleteModal(prev => ({ ...prev, loading: true }));
 
         const { error } = await supabase
             .from('teachers')
             .delete()
-            .eq('id', id);
+            .eq('id', deleteModal.teacherId);
 
         if (error) {
             showToast('Gagal menghapus guru', 'error');
@@ -114,6 +142,8 @@ export default function TeachersPage() {
             showToast('Guru berhasil dihapus', 'success');
             fetchTeachers();
         }
+
+        setDeleteModal({ show: false, teacherId: null, teacherName: '', loading: false });
     };
 
     const openModal = (teacher: any = null) => {
@@ -215,7 +245,7 @@ export default function TeachersPage() {
                                             </div>
                                         </td>
                                         <td className="px-8 py-6">
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${teacher.role === 'admin'
+                                            <span className={`inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${teacher.role === 'admin'
                                                 ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/50'
                                                 : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50'}`}>
                                                 <Shield className="h-3 w-3" />
@@ -231,7 +261,7 @@ export default function TeachersPage() {
                                                     <Edit2 className="h-4 w-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(teacher.id)}
+                                                    onClick={() => confirmDelete(teacher)}
                                                     className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
@@ -364,6 +394,18 @@ export default function TeachersPage() {
                     </div>
                 </div>
             )}
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={deleteModal.show}
+                onClose={() => setDeleteModal(prev => ({ ...prev, show: false }))}
+                onConfirm={handleDelete}
+                title="Hapus Guru?"
+                message={`Apakah Anda yakin ingin menghapus data guru atas nama "${deleteModal.teacherName}"? Tindakan ini tidak dapat dibatalkan.`}
+                confirmText="Hapus Permanen"
+                variant="danger"
+                isLoading={deleteModal.loading}
+            />
         </div>
     );
 }

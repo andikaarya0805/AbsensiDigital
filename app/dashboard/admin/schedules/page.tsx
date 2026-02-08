@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
     Plus,
     Search,
@@ -50,10 +51,14 @@ export default function SchedulesPage() {
 
     const supabase = createClient();
     const { showToast } = useToast();
+    const searchParams = useSearchParams();
 
     useEffect(() => {
         fetchData();
-    }, []);
+        if (searchParams.get('action') === 'new') {
+            setShowModal(true);
+        }
+    }, [searchParams]);
 
     const fetchData = async () => {
         setLoading(true);

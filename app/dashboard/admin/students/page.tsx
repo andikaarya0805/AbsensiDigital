@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
     Plus,
     Search,
@@ -41,10 +42,16 @@ export default function StudentsPage() {
 
     const supabase = createClient();
     const { showToast } = useToast();
+    const searchParams = useSearchParams();
 
     useEffect(() => {
         fetchData();
-    }, []);
+        if (searchParams.get('action') === 'new') {
+            setShowModal(true);
+        }
+        const q = searchParams.get('q');
+        if (q) setSearchTerm(q);
+    }, [searchParams]);
 
     const fetchData = async () => {
         setLoading(true);

@@ -1,0 +1,28 @@
+--- EXISTING CLASSES ---
+Found 6 classes:
+- [1f5c9156-a136-4a91-85fc-3022f930cd87] X TKJ 1 (Level 10)
+- [a306d0b8-9638-4f96-9cec-6187bf3f4798] X TKJ 2 (Level 10)
+- [da6ea8bc-dae4-4e30-81a2-fb3a5a8e0ead] XI TKJ 1 (Level 11)
+- [c999b0e2-4bc8-409b-a62e-5839b9423f76] XI TKJ 2 (Level 11)
+- [072961b8-0d57-43f8-a61f-710549f95fea] XII TKJ 1 (Level 12)
+- [b966df72-2d89-42bd-9b6d-e149cdf8a76b] XII TKJ 2 (Level 12)
+
+--- STUDENT COUNTS ---
+Total students: 54
+
+By 'class' string column:
+  Unassigned: 6
+  XII RPL 1: 10
+  XII RPL 2: 10
+  XII TKJ 1: 10
+  XI TKJ 1: 6
+  XI TKJ 2: 6
+  XII TKJ 2: 6
+
+By 'class_id' column:
+  Unknown/Unassigned (Unassigned): 26
+  XII TKJ 1 (072961b8-0d57-43f8-a61f-710549f95fea): 9
+  X TKJ 1 (1f5c9156-a136-4a91-85fc-3022f930cd87): 1
+  XI TKJ 1 (da6ea8bc-dae4-4e30-81a2-fb3a5a8e0ead): 6
+  XI TKJ 2 (c999b0e2-4bc8-409b-a62e-5839b9423f76): 6
+  XII TKJ 2 (b966df72-2d89-42bd-9b6d-e149cdf8a76b): 6

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
     Users,
     GraduationCap,
@@ -127,15 +128,15 @@ export default function AdminDashboardPage() {
                         <p className="text-slate-400 text-xs font-medium mb-6">Kelola data akademik dengan cepat.</p>
 
                         <div className="space-y-3">
-                            <button className="w-full bg-white/10 hover:bg-white/20 text-white rounded-2xl py-3 px-4 text-sm font-bold transition-all text-left flex items-center gap-3 border border-white/5">
+                            <Link href="/dashboard/admin/teachers?action=new" className="w-full bg-white/10 hover:bg-white/20 text-white rounded-2xl py-3 px-4 text-sm font-bold transition-all text-left flex items-center gap-3 border border-white/5">
                                 <Users className="h-4 w-4" /> Tambah Guru Baru
-                            </button>
-                            <button className="w-full bg-white/10 hover:bg-white/20 text-white rounded-2xl py-3 px-4 text-sm font-bold transition-all text-left flex items-center gap-3 border border-white/5">
-                                <GraduationCap className="h-4 w-4" /> Impor Data Siswa
-                            </button>
-                            <button className="w-full bg-white/10 hover:bg-white/20 text-white rounded-2xl py-3 px-4 text-sm font-bold transition-all text-left flex items-center gap-3 border border-white/5">
+                            </Link>
+                            <Link href="/dashboard/admin/students?action=new" className="w-full bg-white/10 hover:bg-white/20 text-white rounded-2xl py-3 px-4 text-sm font-bold transition-all text-left flex items-center gap-3 border border-white/5">
+                                <GraduationCap className="h-4 w-4" /> Tambah Siswa Baru
+                            </Link>
+                            <Link href="/dashboard/admin/schedules?action=new" className="w-full bg-white/10 hover:bg-white/20 text-white rounded-2xl py-3 px-4 text-sm font-bold transition-all text-left flex items-center gap-3 border border-white/5">
                                 <CalendarCheck className="h-4 w-4" /> Susun Jadwal
-                            </button>
+                            </Link>
                         </div>
                     </div>
                 </div>
