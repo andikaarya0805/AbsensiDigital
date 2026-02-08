@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -10,8 +10,28 @@ import {
     CheckCircle,
     LogOut,
     Calendar,
-    LayoutDashboard
+    LayoutDashboard,
+    Maximize2,
+    X,
+    Download,
+    BookOpen,
+    AlertCircle,
+    User,
+    Moon,
+    Sun
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { useToast } from '@/components/Toast';
+import Link from 'next/link';
+import { useTheme } from '@/components/ThemeProvider';
+
+// Status types for attendance
+const STATUS_OPTIONS = [
+    { value: 'hadir', label: 'HADIR', color: 'bg-emerald-100 text-emerald-700' },
+    { value: 'izin', label: 'IZIN', color: 'bg-blue-100 text-blue-700' },
+    { value: 'sakit', label: 'SAKIT', color: 'bg-yellow-100 text-yellow-700' },
+    { value: 'alpha', label: 'ALPHA', color: 'bg-red-100 text-red-700' },
+];
 
 export default function TeacherDashboard() {
     const [qrValue, setQrValue] = useState('');
@@ -24,16 +44,30 @@ export default function TeacherDashboard() {
     const [selectedClass, setSelectedClass] = useState<string>('');
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [classStudents, setClassStudents] = useState<any[]>([]);
-    const [presentStudentIds, setPresentStudentIds] = useState<Set<string>>(new Set());
+    const [studentStatuses, setStudentStatuses] = useState<Record<string, string>>({});
+
+    // New Features State
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [sessionName, setSessionName] = useState('');
+    const [sessions, setSessions] = useState<string[]>([]);
+    const [selectedSession, setSelectedSession] = useState('');
+    const [scheduleSubjects, setScheduleSubjects] = useState<{ class_name: string, subject: string }[]>([]);
 
     const supabase = createClient();
+    const qrRef = useRef<HTMLDivElement>(null);
+    const { showToast } = useToast();
+    const { theme, toggleTheme } = useTheme();
 
-    // Generate Dynamic QR Value
+    // QR Security Config
+    const QR_REFRESH_SECONDS = 30; // Refresh setiap 30 detik
+    const QR_SECRET = process.env.NEXT_PUBLIC_QR_SECRET || 'FALLBACK_SECRET';
+
+    // Generate Dynamic QR Value with session
     const generateQR = () => {
-        const timestamp = Math.floor(Date.now() / 120000); // Changes every 2 minutes
-        const secret = "HADIRMU_SECRET_123"; // In production, use class session ID
-        setQrValue(`HADIR_SESSION_${timestamp}_${secret}`);
-        setTimeLeft(120);
+        const timestamp = Math.floor(Date.now() / (QR_REFRESH_SECONDS * 1000));
+        const session = sessionName || 'DEFAULT';
+        setQrValue(`HADIR_SESSION_${timestamp}_${QR_SECRET}_${session}`);
+        setTimeLeft(QR_REFRESH_SECONDS);
     };
 
     useEffect(() => {
@@ -42,7 +76,7 @@ export default function TeacherDashboard() {
             setTimeLeft((prev) => {
                 if (prev <= 1) {
                     generateQR();
-                    return 120;
+                    return QR_REFRESH_SECONDS;
                 }
                 return prev - 1;
             });
@@ -58,8 +92,6 @@ export default function TeacherDashboard() {
 
             if (error) {
                 console.error("Fetch Attendance Error:", error);
-            } else {
-                console.log("Fetched Attendance Data:", data);
             }
             setAttendance(data || []);
             setLoading(false);
@@ -83,7 +115,7 @@ export default function TeacherDashboard() {
             clearInterval(timer);
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [sessionName]);
 
     // Fetch Classes on Mount
     useEffect(() => {
@@ -92,7 +124,7 @@ export default function TeacherDashboard() {
                 .from('profiles')
                 .select('class')
                 .not('class', 'is', null)
-                .neq('class', '') // Ensure empty strings are ignored
+                .neq('class', '')
                 .order('class', { ascending: true });
 
             if (error) {
@@ -100,27 +132,74 @@ export default function TeacherDashboard() {
                 return;
             }
 
+            const uniqueClasses = [...new Set(data?.map((d) => d.class).filter(Boolean))] as string[];
+            setClasses(uniqueClasses);
+        };
+
+        // Fetch unique sessions for today
+        const fetchSessions = async () => {
+            const today = new Date().toISOString().split('T')[0];
+            const { data } = await supabase
+                .from('attendance')
+                .select('session_name')
+                .gte('timestamp', `${today}T00:00:00`)
+                .lte('timestamp', `${today}T23:59:59`)
+                .not('session_name', 'is', null);
+
             if (data) {
-                // Get unique classes
-                // @ts-ignore
-                const uniqueClasses = Array.from(new Set(data.map(item => item.class)));
-                setClasses(uniqueClasses as string[]);
+                const uniqueSessions = [...new Set(data.map(d => d.session_name).filter(Boolean))] as string[];
+                setSessions(uniqueSessions);
             }
         };
+
+        // Fetch teacher's schedule subjects
+        const fetchTeacherSchedule = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            const userSession = document.cookie.split('; ').find(row => row.startsWith('user_session='))?.split('=')[1];
+
+            const teacherId = user?.id || userSession;
+            if (!teacherId) return;
+
+            const { data } = await supabase
+                .from('schedules')
+                .select('class_name, subject')
+                .eq('teacher_id', teacherId);
+
+            if (data) {
+                // Get unique class + subject combinations
+                const unique = data.filter((v, i, a) =>
+                    a.findIndex(t => t.class_name === v.class_name && t.subject === v.subject) === i
+                );
+                setScheduleSubjects(unique);
+            }
+        };
+
         fetchClasses();
+        fetchSessions();
+        fetchTeacherSchedule();
     }, []);
 
-    // Fetch Class Students & Today's Attendance
+    // Sign Out Helper
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        // Clear custom cookies
+        document.cookie = "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC";
+        document.cookie = "user_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC";
+        localStorage.removeItem('student_session');
+        window.location.href = '/login';
+    };
+
+    // Fetch Class Students & Attendance by Date and Session
     useEffect(() => {
         if (!selectedClass) return;
 
         const fetchClassData = async () => {
             // Fetch students in class
-            const { data: students, error: studentError } = await supabase
-                .from('profiles')
+            const { data: students } = await supabase
+                .from('students')
                 .select('*')
                 .eq('class', selectedClass)
-                .eq('role', 'student') // Ensure we only get students
+                .eq('role', 'student')
                 .order('full_name');
 
             if (students) setClassStudents(students);
@@ -130,119 +209,233 @@ export default function TeacherDashboard() {
             const startOfDay = new Date(y, m - 1, d, 0, 0, 0);
             const endOfDay = new Date(y, m - 1, d, 23, 59, 59);
 
-            const { data: attendanceData, error: attError } = await supabase
+            let query = supabase
                 .from('attendance')
-                .select('student_id')
+                .select('student_id, status_type, session_name')
                 .gte('timestamp', startOfDay.toISOString())
                 .lte('timestamp', endOfDay.toISOString());
 
+            // Filter by current session name (from dropdown)
+            if (sessionName) {
+                query = query.eq('session_name', sessionName);
+            }
+
+            const { data: attendanceData } = await query;
+
             if (attendanceData) {
-                const presentIds = new Set(attendanceData.map(a => a.student_id));
-                setPresentStudentIds(presentIds);
+                const statusMap: Record<string, string> = {};
+                attendanceData.forEach(a => {
+                    statusMap[a.student_id] = a.status_type || 'hadir';
+                });
+                setStudentStatuses(statusMap);
+            } else {
+                setStudentStatuses({});
             }
         };
 
         fetchClassData();
 
-        // Optional: Realtime subscription for this class could be added here
-        const channel = supabase
-            .channel(`class_attendance_${selectedClass}`)
-            .on(
-                'postgres_changes' as any,
-                { event: 'INSERT', schema: 'public', table: 'attendance' },
-                (payload: any) => {
-                    // Update if the new attendance belongs to a student we are watching
-                    // But we only have student_id in payload, so we can just add to set
-                    setPresentStudentIds(prev => {
-                        const newSet = new Set(prev);
-                        newSet.add(payload.new.student_id);
-                        return newSet;
-                    });
-                }
-            )
-            .subscribe();
+        // Real-time subscription only for today
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const isToday = selectedDate === todayStr;
+
+        let channel: any = null;
+        if (isToday) {
+            channel = supabase
+                .channel(`class_attendance_${selectedClass}`)
+                .on(
+                    'postgres_changes' as any,
+                    { event: '*', schema: 'public', table: 'attendance' },
+                    () => fetchClassData()
+                )
+                .subscribe();
+        }
 
         return () => {
-            supabase.removeChannel(channel);
+            if (channel) supabase.removeChannel(channel);
         };
-    }, [selectedClass, selectedDate]);
+    }, [selectedClass, selectedDate, sessionName]);
 
-    // Manual Attendance Toggle
-    const toggleAttendance = async (studentId: string, isCurrentlyPresent: boolean) => {
-        // Use LOCAL date (not UTC) for proper timezone handling
+    // Update student status
+    const updateStatus = async (studentId: string, newStatus: string) => {
         const now = new Date();
         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-        // Only allow manual toggle for TODAY
         if (selectedDate !== todayStr) {
-            alert('Hanya bisa mengubah presensi untuk hari ini!');
+            showToast('Hanya bisa mengubah status untuk hari ini!', 'warning');
             return;
         }
 
-        if (isCurrentlyPresent) {
-            // Remove attendance
-            const [y, m, d] = selectedDate.split('-').map(Number);
-            const startOfDay = new Date(y, m - 1, d, 0, 0, 0);
-            const endOfDay = new Date(y, m - 1, d, 23, 59, 59);
+        const [y, m, d] = selectedDate.split('-').map(Number);
+        const startOfDay = new Date(y, m - 1, d, 0, 0, 0);
+        const endOfDay = new Date(y, m - 1, d, 23, 59, 59);
 
+        // Check if attendance exists
+        const { data: existing } = await supabase
+            .from('attendance')
+            .select('id')
+            .eq('student_id', studentId)
+            .gte('timestamp', startOfDay.toISOString())
+            .lte('timestamp', endOfDay.toISOString())
+            .eq('session_name', sessionName || 'DEFAULT')
+            .single();
+
+        if (existing) {
+            // Update existing
             await supabase
                 .from('attendance')
-                .delete()
-                .eq('student_id', studentId)
-                .gte('timestamp', startOfDay.toISOString())
-                .lte('timestamp', endOfDay.toISOString());
-
-            setPresentStudentIds(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(studentId);
-                return newSet;
-            });
+                .update({ status_type: newStatus })
+                .eq('id', existing.id);
         } else {
-            // Add manual attendance
+            // Insert new
             await supabase
                 .from('attendance')
                 .insert({
                     student_id: studentId,
                     timestamp: new Date().toISOString(),
-                    qr_token: 'MANUAL_ENTRY'
+                    status_type: newStatus,
+                    session_name: sessionName || 'DEFAULT'
                 });
-
-            setPresentStudentIds(prev => {
-                const newSet = new Set(prev);
-                newSet.add(studentId);
-                return newSet;
-            });
         }
+
+        // Update local state
+        setStudentStatuses(prev => ({ ...prev, [studentId]: newStatus }));
+    };
+
+    // Export to Excel
+    const exportToExcel = () => {
+        if (!selectedClass || classStudents.length === 0) {
+            showToast('Pilih kelas terlebih dahulu!', 'warning');
+            return;
+        }
+
+        const data = classStudents.map((student, index) => {
+            const status = studentStatuses[student.id] || 'alpha';
+            const statusLabel = STATUS_OPTIONS.find(s => s.value === status)?.label || 'ALPHA';
+            return {
+                'No': index + 1,
+                'Nama Siswa': student.full_name,
+                'NIS': student.nis,
+                'Kelas': student.class,
+                'Status': statusLabel,
+                'Sesi': selectedSession || 'Semua Sesi',
+                'Tanggal': selectedDate
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Rekap Absensi');
+
+        const fileName = `Absensi_${selectedClass}_${selectedDate}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+        showToast(`File ${fileName} berhasil diunduh!`, 'success');
+    };
+
+    // Toggle Fullscreen
+    const toggleFullscreen = () => {
+        setIsFullscreen(!isFullscreen);
+    };
+
+    // Get status badge color
+    const getStatusBadge = (status: string) => {
+        const opt = STATUS_OPTIONS.find(s => s.value === status) || STATUS_OPTIONS[3];
+        return opt;
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
-            {/* Sidebar - Desktop */}
-            <aside className="w-full md:w-64 bg-white border-b md:border-r border-slate-200 p-6">
-                <div className="flex items-center gap-2 mb-8">
-                    <div className="bg-blue-600 p-2 rounded-lg">
-                        <LayoutDashboard className="h-5 w-5 text-white" />
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row transition-colors duration-300">
+            {/* Fullscreen QR Modal */}
+            {isFullscreen && (
+                <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
+                    <button
+                        onClick={toggleFullscreen}
+                        className="absolute top-6 right-6 text-white hover:text-red-400 transition-colors"
+                    >
+                        <X className="h-8 w-8" />
+                    </button>
+
+                    <div className="text-center">
+                        {sessionName && (
+                            <div className="mb-6">
+                                <span className="bg-blue-600 text-white px-6 py-2 rounded-full text-xl font-bold">
+                                    {sessionName}
+                                </span>
+                            </div>
+                        )}
+
+                        <div className="bg-white p-8 rounded-3xl">
+                            <QRCodeSVG value={qrValue} size={400} level="H" includeMargin={true} />
+                        </div>
+
+                        <div className="mt-8 flex items-center justify-center gap-4 text-white">
+                            <Clock className="h-6 w-6" />
+                            <span className="text-4xl font-bold tabular-nums">{timeLeft}s</span>
+                        </div>
+
+                        <div className="mt-4 w-80 mx-auto bg-gray-700 h-2 rounded-full overflow-hidden">
+                            <div
+                                className="bg-blue-500 h-full transition-all duration-1000 ease-linear"
+                                style={{ width: `${(timeLeft / 120) * 100}%` }}
+                            />
+                        </div>
+
+                        <p className="mt-6 text-gray-400 text-sm">Tekan ESC atau klik X untuk keluar</p>
                     </div>
-                    <h1 className="text-xl font-bold text-slate-900">HadirMu</h1>
+                </div>
+            )}
+
+            {/* Sidebar */}
+            <aside className="w-full md:w-64 bg-white dark:bg-slate-900 border-b md:border-r border-slate-200 dark:border-slate-800 p-6 transition-colors duration-300">
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-2">
+                        <div className="bg-blue-600 p-2 rounded-lg">
+                            <LayoutDashboard className="h-5 w-5 text-white" />
+                        </div>
+                        <h1 className="text-xl font-bold text-slate-900 dark:text-white">HadirMu</h1>
+                    </div>
+
+                    <button
+                        onClick={toggleTheme}
+                        className="p-2 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-yellow-400 rounded-xl transition-all"
+                        title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+                    >
+                        {theme === 'light' ? (
+                            <Moon className="h-5 w-5" />
+                        ) : (
+                            <Sun className="h-5 w-5" />
+                        )}
+                    </button>
                 </div>
 
                 <nav className="space-y-1">
-                    <div className="flex items-center gap-3 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium">
+                    <div className="flex items-center gap-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg font-medium border border-blue-100 dark:border-blue-800/50">
                         <Users className="h-4 w-4" />
                         Attendance
                     </div>
-                    <div className="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer">
-                        <Calendar className="h-4 w-4" />
+                    <Link
+                        href="/dashboard/teacher/schedule"
+                        className="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors group"
+                    >
+                        <Calendar className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
                         Class Schedule
-                    </div>
+                    </Link>
+                    <Link
+                        href="/dashboard/teacher/profile"
+                        className="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors group"
+                    >
+                        <User className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                        Profil Saya
+                    </Link>
                 </nav>
 
-                <div className="mt-auto pt-8 border-t border-slate-100 hidden md:block">
+                <div className="mt-auto pt-8 border-t border-slate-100 dark:border-slate-800 hidden md:block">
                     <button
-                        onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')}
-                        className="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-red-500 transition-colors w-full"
+                        onClick={handleSignOut}
+                        className="flex items-center gap-3 px-3 py-2 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors w-full group"
                     >
-                        <LogOut className="h-4 w-4" />
+                        <LogOut className="h-4 w-4 text-slate-400 group-hover:text-red-500 transition-colors" />
                         Sign Out
                     </button>
                 </div>
@@ -255,138 +448,207 @@ export default function TeacherDashboard() {
                     {/* QR Code Section */}
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-900">Attendance QR</h2>
-                            <p className="text-slate-500">Show this QR to students for scanning</p>
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Attendance QR</h2>
+                            <p className="text-slate-500 dark:text-slate-400">Show this QR to students for scanning</p>
                         </div>
 
-                        <div className="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col items-center">
-                            <div className="relative p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                        {/* Session Selection from Schedule */}
+                        <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                <BookOpen className="h-4 w-4 inline mr-2 text-blue-600 dark:text-blue-400" />
+                                Pilih Kelas & Mata Pelajaran
+                            </label>
+                            {scheduleSubjects.length > 0 ? (
+                                <select
+                                    value={sessionName}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        setSessionName(value);
+                                        // Auto-select class from the dropdown value
+                                        if (value) {
+                                            const className = value.split(' - ')[0];
+                                            setSelectedClass(className);
+                                            setSelectedSession(value);
+                                        }
+                                    }}
+                                    className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none text-black dark:text-white font-medium transition-colors"
+                                >
+                                    <option value="" className="dark:bg-slate-800">-- Pilih dari jadwal --</option>
+                                    {scheduleSubjects.map((s, i) => (
+                                        <option key={i} value={`${s.class_name} - ${s.subject}`} className="dark:bg-slate-800">
+                                            {s.class_name} - {s.subject}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    type="text"
+                                    placeholder="Contoh: XII RPL 1 - Matematika"
+                                    value={sessionName}
+                                    onChange={(e) => setSessionName(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none text-black dark:text-white transition-colors"
+                                />
+                            )}
+                        </div>
+
+                        <div ref={qrRef} className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 flex flex-col items-center transition-colors">
+                            <div className="relative p-4 bg-slate-50 dark:bg-white rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-300">
                                 <QRCodeSVG value={qrValue} size={256} level="H" includeMargin={true} />
                             </div>
 
-                            <div className="mt-8 w-full space-y-4">
-                                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 rounded-xl border border-slate-100">
-                                    <div className="flex items-center gap-3 text-slate-600">
+                            {sessionName && (
+                                <div className="mt-4">
+                                    <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-4 py-1.5 rounded-full text-sm font-bold">
+                                        {sessionName}
+                                    </span>
+                                </div>
+                            )}
+
+                            <div className="mt-6 w-full space-y-4">
+                                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
                                         <Clock className="h-4 w-4" />
-                                        <span className="text-sm font-medium text-slate-600">Refreshes in</span>
+                                        <span className="text-sm font-medium">Refreshes in</span>
                                     </div>
-                                    <span className="text-blue-600 font-bold tabular-nums">{timeLeft}s</span>
+                                    <span className="text-blue-600 dark:text-blue-400 font-bold tabular-nums">{timeLeft}s</span>
                                 </div>
 
-                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                                     <div
-                                        className="bg-blue-600 h-full transition-all duration-1000 ease-linear"
+                                        className="bg-blue-600 dark:bg-blue-500 h-full transition-all duration-1000 ease-linear"
                                         style={{ width: `${(timeLeft / 120) * 100}%` }}
                                     />
                                 </div>
                             </div>
 
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    generateQR();
-                                }}
-                                className="mt-6 flex items-center gap-2 text-sm text-slate-400 hover:text-blue-600 transition-colors"
-                            >
-                                <RefreshCw className="h-4 w-4" />
-                                Regenerate Manually
-                            </button>
+                            <div className="mt-6 flex items-center gap-4">
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.preventDefault(); generateQR(); }}
+                                    className="flex items-center gap-2 text-sm text-slate-400 hover:text-blue-600 transition-colors"
+                                >
+                                    <RefreshCw className="h-4 w-4" />
+                                    Regenerate
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={toggleFullscreen}
+                                    className="flex items-center gap-2 text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                    <Maximize2 className="h-4 w-4" />
+                                    Fullscreen
+                                </button>
+                            </div>
                         </div>
                     </div>
 
 
-                    {/* Class Attendance Section */}
-                    <div className="lg:col-span-2 space-y-6 pt-10 border-t border-slate-200">
+                    <div className="lg:col-span-2 space-y-6 pt-10 border-t border-slate-200 dark:border-slate-800">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
-                                <h2 className="text-2xl font-bold text-slate-900">Rekap Absensi Per Kelas</h2>
-                                <div className="flex items-center gap-2 text-slate-500 text-sm mt-1">
-                                    <Calendar className="h-4 w-4" />
-                                    <span>
-                                        {new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                                    </span>
-                                </div>
+                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Rekap Absensi</h2>
+                                {sessionName ? (
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <span className="bg-blue-600 dark:bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-bold">
+                                            {sessionName}
+                                        </span>
+                                        <span className="text-slate-400 dark:text-slate-600">•</span>
+                                        <span className="text-slate-500 dark:text-slate-400 text-sm">
+                                            {new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                                        Pilih kelas & mata pelajaran di atas untuk melihat daftar siswa
+                                    </p>
+                                )}
                             </div>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                                 <input
                                     type="date"
-                                    className="bg-white border border-slate-200 text-slate-900 py-3 px-4 rounded-xl font-medium focus:outline-none focus:border-blue-500"
+                                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white py-2 px-3 rounded-lg text-sm focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
                                     value={selectedDate}
                                     onChange={(e) => setSelectedDate(e.target.value)}
                                 />
-                                <div className="relative">
-                                    <select
-                                        className="appearance-none bg-white border border-slate-200 text-slate-900 py-3 px-4 pr-8 rounded-xl leading-tight focus:outline-none focus:bg-white focus:border-blue-500 font-bold min-w-[200px]"
-                                        value={selectedClass}
-                                        onChange={(e) => setSelectedClass(e.target.value)}
-                                    >
-                                        <option value="">Pilih Kelas...</option>
-                                        {classes.map((c) => (
-                                            <option key={c} value={c}>{c}</option>
-                                        ))}
-                                    </select>
-                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-700">
-                                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                                    </div>
-                                </div>
+
+                                <button
+                                    onClick={exportToExcel}
+                                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-xl font-bold transition-colors shadow-lg shadow-emerald-200/50 dark:shadow-none"
+                                >
+                                    <Download className="h-4 w-4" />
+                                    Export Excel
+                                </button>
                             </div>
                         </div>
 
                         {selectedClass && (
-                            <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">
+                            <div className="bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
-                                        <thead className="bg-slate-50 border-b border-slate-100">
+                                        <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
                                             <tr>
-                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Siswa</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">NIS</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Status</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nama Siswa</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">NIS</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-slate-100">
+                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                             {classStudents.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={3} className="px-6 py-12 text-center text-slate-400">
+                                                    <td colSpan={3} className="px-6 py-12 text-center text-slate-400 dark:text-slate-500">
                                                         Tidak ada siswa di kelas ini.
                                                     </td>
                                                 </tr>
                                             ) : (
                                                 classStudents.map((student) => {
-                                                    const isPresent = presentStudentIds.has(student.id);
+                                                    const currentStatus = studentStatuses[student.id] || '';
+                                                    const statusInfo = getStatusBadge(currentStatus || 'alpha');
+                                                    const now = new Date();
+                                                    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                                                    const isToday = selectedDate === todayStr;
+
                                                     return (
-                                                        <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                                                        <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                                             <td className="px-6 py-4">
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className="h-8 w-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">
+                                                                    <div className="h-8 w-8 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center font-bold text-xs">
                                                                         {student.full_name?.charAt(0)}
                                                                     </div>
-                                                                    <span className="font-bold text-slate-900">{student.full_name}</span>
+                                                                    <span className="font-bold text-slate-900 dark:text-white">{student.full_name}</span>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-4 font-medium text-slate-500 font-mono text-sm">
+                                                            <td className="px-6 py-4 font-medium text-slate-500 dark:text-slate-400 font-mono text-sm">
                                                                 {student.nis}
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => toggleAttendance(student.id, isPresent)}
-                                                                    className="cursor-pointer hover:scale-105 transition-transform"
-                                                                    title={isPresent ? 'Klik untuk tandai ABSEN' : 'Klik untuk tandai HADIR'}
-                                                                >
-                                                                    {isPresent ? (
-                                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
-                                                                            <CheckCircle className="h-3.5 w-3.5" />
-                                                                            HADIR
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-pink-100 text-pink-700">
-                                                                            <LogOut className="h-3.5 w-3.5 rotate-180" />
-                                                                            ABSEN
-                                                                        </span>
-                                                                    )}
-                                                                </button>
+                                                                {isToday ? (
+                                                                    <div className="relative inline-block">
+                                                                        <select
+                                                                            value={currentStatus || 'alpha'}
+                                                                            onChange={(e) => updateStatus(student.id, e.target.value)}
+                                                                            className={`appearance-none px-4 py-2 rounded-full text-xs font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-800 ${statusInfo.color} dark:bg-opacity-20 border border-transparent dark:border-white/10`}
+                                                                        >
+                                                                            {STATUS_OPTIONS.map(opt => (
+                                                                                <option key={opt.value} value={opt.value} className="dark:bg-slate-900 text-black dark:text-white">{opt.label}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${statusInfo.color} dark:bg-opacity-20`}>
+                                                                        {currentStatus ? (
+                                                                            <>
+                                                                                <CheckCircle className="h-3.5 w-3.5" />
+                                                                                {statusInfo.label}
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <AlertCircle className="h-3.5 w-3.5" />
+                                                                                ALPHA
+                                                                            </>
+                                                                        )}
+                                                                    </span>
+                                                                )}
                                                             </td>
                                                         </tr>
                                                     );

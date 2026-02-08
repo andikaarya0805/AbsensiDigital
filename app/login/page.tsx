@@ -10,26 +10,29 @@ import {
     Eye,
     EyeOff,
     Fingerprint,
-    Smartphone,
-    CheckCircle2
+    Loader2,
+    Moon,
+    Sun
 } from 'lucide-react';
+import { useTheme } from '@/components/ThemeProvider';
+import Link from 'next/link';
 
 export default function LoginPage() {
-    const [nis, setNis] = useState('');
+    const { theme, toggleTheme } = useTheme();
+    const [identifier, setIdentifier] = useState(''); // Bisa NIS atau Email
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [biometricStatus, setBiometricStatus] = useState<'idle' | 'scanning' | 'success'>('idle');
 
     const supabase = createClient();
 
     useEffect(() => {
-        // Load remembered NIS
-        const savedNis = localStorage.getItem('remembered_nis');
-        if (savedNis) {
-            setNis(savedNis);
+        // Load remembered NIS/Email
+        const savedId = localStorage.getItem('remembered_id');
+        if (savedId) {
+            setIdentifier(savedId);
             setRememberMe(true);
         }
     }, []);
@@ -40,201 +43,240 @@ export default function LoginPage() {
         setError(null);
 
         try {
-            const deviceId = getDeviceId();
-            // Allow both raw NIS or full email
-            const identifier = nis.includes('@') ? nis.split('@')[0] : nis;
-            const email = `${identifier}@hadirmu.school`;
+            const input = identifier.trim();
 
-            // Auto-Sync Auth Account
-            const syncRes = await fetch('/api/auth/sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nis: identifier })
-            });
-            const syncData = await syncRes.json();
-
-            if (!syncRes.ok && syncRes.status !== 404) {
-                console.error("Sync error:", syncData.error);
-            }
-
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-
-            if (authError) throw authError;
-
-            // Fetch profile for checks
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
+            // 1. Unified Search: Check BOTH tables for identifier (Email, NIP, or NIS)
+            // Handle as Teacher search first
+            const { data: teacher } = await supabase
+                .from('teachers')
                 .select('*')
-                .eq('id', authData.user.id)
+                .or(`email.eq.${input},nip.eq.${input}`)
                 .maybeSingle();
 
-            if (profileError) throw profileError;
-            if (!profile) throw new Error('Profil tidak ditemukan. Hubungi Admin.');
+            // Handle as Student search
+            const { data: student } = await supabase
+                .from('students')
+                .select('*')
+                .or(`recovery_email.eq.${input},nis.eq.${input}`)
+                .maybeSingle();
 
-            // 1. Auto-Bind Device (Relaxed Rule)
-            // Always update to the current deviceId on login.
-            if (profile.device_id !== deviceId) {
-                await supabase
-                    .from('profiles')
-                    .update({ device_id: deviceId })
-                    .eq('id', authData.user.id);
-            }
+            if (teacher) {
+                // ==========================================
+                // LOGIN GURU / ADMIN (Database-driven)
+                // ==========================================
+                const teacherPassword = teacher.password || '123456';
+                if (teacherPassword !== password) {
+                    throw new Error(password === '' ? 'Password wajib diisi!' : 'Password salah!');
+                }
 
-            // 3. Remember Me logic
-            if (rememberMe) {
-                localStorage.setItem('remembered_nis', nis);
+                // Set Cookie for Middleware (valid for 7 days)
+                const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+                document.cookie = `user_role=${teacher.role || 'teacher'}; path=/; expires=${expires}`;
+                document.cookie = `user_session=${teacher.id}; path=/; expires=${expires}`;
+
+                // Silent Auth (Optional)
+                if (teacher.email) {
+                    await supabase.auth.signInWithPassword({ email: teacher.email, password }).catch(() => { });
+                }
+
+                // Redirect
+                let redirectUrl = '/dashboard/teacher';
+                if (teacher.role === 'admin') redirectUrl = '/dashboard/admin';
+
+                if (rememberMe) localStorage.setItem('remembered_id', input);
+                else localStorage.removeItem('remembered_id');
+
+                window.location.href = redirectUrl;
+
+            } else if (student) {
+                // ==========================================
+                // LOGIN SISWA (Database-driven)
+                // ==========================================
+                // Siswa menggunakan password, fallback ke 123456 jika belum diset
+                const studentPassword = student.password || '123456';
+                if (studentPassword !== password) {
+                    throw new Error(password === '' ? 'PIN wajib diisi!' : 'PIN salah!');
+                }
+
+                // Set Cookie for Middleware
+                const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+                document.cookie = `user_role=student; path=/; expires=${expires}`;
+                document.cookie = `user_session=${student.id}; path=/; expires=${expires}`;
+
+                // Save Local Session
+                const session = {
+                    id: student.id,
+                    nis: student.nis,
+                    full_name: student.full_name,
+                    class: student.class,
+                    role: 'student',
+                    loginAt: new Date().toISOString()
+                };
+                localStorage.setItem('student_session', JSON.stringify(session));
+
+                if (rememberMe) localStorage.setItem('remembered_id', input);
+                else localStorage.removeItem('remembered_id');
+
+                // Redirect
+                window.location.href = studentPassword === '123456' ? '/dashboard/student/setup' : '/dashboard/student';
+
             } else {
-                localStorage.removeItem('remembered_nis');
+                throw new Error('Identitas (NIS/NIP/Email) tidak ditemukan dalam sistem.');
             }
 
-            // 4. Force password change if default and first_login is true
-            if (profile.first_login && password === '123456') {
-                window.location.href = '/change-password';
-            } else {
-                window.location.href = profile.role === 'teacher' ? '/dashboard/teacher' : '/dashboard/student';
-            }
         } catch (err: any) {
-            setError(err.message);
+            console.error(err);
+            setError(err.message || 'Login gagal. Periksa kembali kredensial Anda.');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleBiometric = () => {
-        setBiometricStatus('scanning');
-        setTimeout(() => {
-            setBiometricStatus('success');
-            setTimeout(() => setBiometricStatus('idle'), 2000);
-        }, 2000);
-    };
-
     return (
-        <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center py-12 px-6 lg:px-8 font-sans">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="flex justify-center flex-col items-center">
-                    <div className="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-200 mb-4 animate-in zoom-in-50 duration-500">
-                        <School className="h-10 w-10 text-white" />
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col lg:flex-row transition-colors duration-300">
+
+            {/* Left Side - Illustration (Original UI) */}
+            <div className="lg:w-1/2 bg-blue-600 dark:bg-blue-900 p-8 lg:p-16 flex flex-col justify-between text-white relative overflow-hidden transition-colors duration-300">
+                <div className="absolute top-8 right-8 z-20">
+                    <button
+                        onClick={toggleTheme}
+                        type="button"
+                        className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl backdrop-blur-md border border-white/10 transition-all"
+                    >
+                        {theme === 'light' ? <Moon className="h-6 w-6" /> : <Sun className="h-6 w-6" />}
+                    </button>
+                </div>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl -ml-20 -mb-20"></div>
+
+                <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                            <School className="h-8 w-8 text-white" />
+                        </div>
+                        <h1 className="text-2xl font-bold tracking-tight">HadirMu</h1>
                     </div>
-                    <h2 className="text-center text-4xl font-black tracking-tight text-slate-900">HadirMu</h2>
-                    <p className="mt-2 text-slate-500 font-medium">Sistem Presensi Digital Sekolah</p>
+                    <div className="bg-blue-500/30 inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border border-white/10 mb-8">
+                        <ShieldAlert className="h-4 w-4 text-blue-200" />
+                        <span className="text-sm font-medium text-blue-50">Sistem Keamanan Terintegrasi</span>
+                    </div>
+                </div>
+
+                <div className="relative z-10 my-auto">
+                    <h2 className="text-4xl lg:text-5xl font-bold mb-6 leading-tight">
+                        Absensi Sekolah <br />
+                        <span className="text-blue-200">Jadi Lebih Mudah</span>
+                    </h2>
+                    <p className="text-blue-100 text-lg max-w-md leading-relaxed">
+                        Platform presensi digital berbasis QR Code dengan validasi lokasi real-time dan anti-fake GPS.
+                    </p>
                 </div>
             </div>
 
-            <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-10 px-6 shadow-[0_20px_50px_rgba(8,112,184,0.07)] sm:rounded-3xl sm:px-12 border border-slate-100 relative overflow-hidden">
-                    {/* Subtle Glow Background */}
-                    <div className="absolute -top-24 -right-24 h-48 w-48 bg-blue-50 rounded-full blur-3xl opacity-50" />
+            {/* Right Side - Login Form (Dual Logic) */}
+            <div className="lg:w-1/2 p-8 lg:p-16 flex items-center justify-center bg-white dark:bg-slate-950 transition-colors duration-300 relative">
+                <div className="absolute top-8 right-8 lg:hidden">
+                    <button
+                        onClick={toggleTheme}
+                        className="p-2.5 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-yellow-400 rounded-xl transition-all"
+                    >
+                        {theme === 'light' ? (
+                            <Moon className="h-6 w-6" />
+                        ) : (
+                            <Sun className="h-6 w-6" />
+                        )}
+                    </button>
+                </div>
 
-                    <form className="space-y-6 relative z-10" onSubmit={handleLogin}>
+                <div className="w-full max-w-md space-y-8">
+                    <div className="text-center">
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Selamat Datang</h2>
+                        <p className="text-slate-500 dark:text-slate-400">Masuk menggunakan NIS (Siswa) atau Email (Guru)</p>
+                    </div>
+
+                    <form onSubmit={handleLogin} className="space-y-6">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 ml-1">Username / NIS</label>
-                            <div className="mt-1.5 relative">
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                NIS / Email
+                            </label>
+                            <div className="relative">
+                                <School className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                                 <input
                                     type="text"
+                                    value={identifier}
+                                    onChange={(e) => setIdentifier(e.target.value)}
+                                    placeholder="Contoh: 12345 atau guru@sekolah.id"
+                                    className="w-full pl-12 pr-4 py-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:border-blue-500 focus:outline-none text-lg font-medium text-black dark:text-white transition-all outline-none"
                                     required
-                                    className="block w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
-                                    placeholder="Masukkan NIS atau Username"
-                                    value={nis}
-                                    onChange={(e) => setNis(e.target.value)}
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 ml-1">Password</label>
-                            <div className="mt-1.5 relative">
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                Password / PIN Siswa
+                            </label>
+                            <div className="relative">
+                                <Fingerprint className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                                 <input
-                                    type={showPassword ? "text" : "password"}
-                                    required
-                                    className="block w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
-                                    placeholder="········"
+                                    type={showPassword ? 'text' : 'password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className="w-full pl-12 pr-12 py-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:border-blue-500 focus:outline-none text-lg font-medium text-black dark:text-white transition-all outline-none"
+                                    required
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600"
                                 >
                                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between ml-1">
-                            <label className="flex items-center gap-2 cursor-pointer group">
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 cursor-pointer">
                                 <input
                                     type="checkbox"
-                                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                     checked={rememberMe}
                                     onChange={(e) => setRememberMe(e.target.checked)}
+                                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 dark:bg-slate-900"
                                 />
-                                <span className="text-sm font-semibold text-slate-500 group-hover:text-slate-700 transition-colors">Ingat Saya</span>
+                                <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">Ingat Saya</span>
                             </label>
-                            <a href="#" className="text-sm font-bold text-blue-600 hover:text-blue-700 underline-offset-4 hover:underline">Lupa Password?</a>
+                            <Link href="/forgot-password" className="text-sm font-bold text-blue-600 hover:text-blue-700">
+                                Lupa Password?
+                            </Link>
                         </div>
 
                         {error && (
-                            <div className="rounded-2xl bg-red-50 p-4 border border-red-100 flex items-start gap-3 animate-shake">
-                                <ShieldAlert className="h-5 w-5 text-red-600 shrink-0" />
-                                <p className="text-sm text-red-700 font-medium">{error}</p>
+                            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm font-medium border border-red-100 flex items-start gap-2">
+                                <ShieldAlert className="h-5 w-5 shrink-0" />
+                                <p>{error}</p>
                             </div>
                         )}
 
-                        <div className="space-y-4 pt-2">
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="group relative w-full flex justify-center items-center gap-2 py-4 px-4 border border-transparent rounded-2xl shadow-[0_10px_20px_-5px_rgba(37,99,235,0.4)] text-base font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all active:scale-[0.98]"
-                            >
-                                {loading ? (
-                                    <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                    <>
-                                        <LogIn className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                                        Masuk Sekarang
-                                    </>
-                                )}
-                            </button>
-
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100" /></div>
-                                <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-400 font-bold">Atau gunakan</span></div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    type="button"
-                                    onClick={handleBiometric}
-                                    className="flex items-center justify-center gap-2 py-3 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-600 font-bold text-sm hover:bg-slate-100 hover:border-slate-300 transition-all active:scale-95"
-                                >
-                                    {biometricStatus === 'scanning' ? (
-                                        <div className="h-4 w-4 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin" />
-                                    ) : biometricStatus === 'success' ? (
-                                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                    ) : (
-                                        <Fingerprint className="h-4 w-4" />
-                                    )}
-                                    Biometric
-                                </button>
-                                <button
-                                    type="button"
-                                    className="flex items-center justify-center gap-2 py-3 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-600 font-bold text-sm hover:bg-slate-100 hover:border-slate-300 transition-all active:scale-95"
-                                >
-                                    <Smartphone className="h-4 w-4" />
-                                    Device ID
-                                </button>
-                            </div>
-                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-blue-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    Memproses...
+                                </>
+                            ) : (
+                                <>
+                                    <LogIn className="h-5 w-5" />
+                                    Masuk Sekarang
+                                </>
+                            )}
+                        </button>
                     </form>
                 </div>
-
-                <p className="mt-8 text-center text-sm text-slate-400 font-medium">
-                    Masalah saat masuk? <a href="#" className="text-blue-600 font-bold">Hubungi Admin</a>
-                </p>
             </div>
         </div>
     );

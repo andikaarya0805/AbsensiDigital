@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
         // 1. Check if profile exists
         const { data: profile, error: profileError } = await supabaseAdmin
-            .from('profiles')
+            .from('students')
             .select('*')
             .eq('nis', nis)
             .maybeSingle();
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         // 3. Link profile to Auth ID if not already linked correctly
         if (profile.id !== existingUser.id) {
             const { error: updateError } = await supabaseAdmin
-                .from('profiles')
+                .from('students')
                 .update({ id: existingUser.id })
                 .eq('nis', nis);
 

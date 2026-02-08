@@ -53,10 +53,10 @@ export default function Scanner({ onScanSuccess, onScanError }: ScannerProps) {
     }, [onScanSuccess, onScanError]);
 
     return (
-        <div className="w-full max-w-md mx-auto overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center gap-2">
-                <Scan className="h-5 w-5 text-blue-600" />
-                <span className="font-semibold text-slate-800 text-sm">Attendance Scanner</span>
+        <div className="w-full max-w-md mx-auto overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm transition-colors duration-300">
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                <Scan className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Attendance Scanner</span>
             </div>
             <div id="qr-reader" className="w-full" />
         </div>

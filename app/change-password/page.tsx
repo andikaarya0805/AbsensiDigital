@@ -34,7 +34,7 @@ export default function ChangePasswordPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 await supabase
-                    .from('profiles')
+                    .from('teachers')
                     .update({ first_login: false })
                     .eq('id', user.id);
             }
