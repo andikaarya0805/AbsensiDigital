@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { getDeviceId } from '@/lib/utils';
 import Scanner from '@/components/Scanner';
 import {
     CheckCircle2,
@@ -137,6 +138,12 @@ export default function StudentDashboard() {
         setStatus('scanning');
 
         try {
+            // DEVICE ID VERIFICATION
+            const currentDeviceId = getDeviceId();
+            if (profile.device_id && profile.device_id !== currentDeviceId) {
+                throw new Error('Perangkat ini tidak terdaftar untuk akun Anda. Gunakan perangkat asli atau hubungi Admin.');
+            }
+
             // Security Config - must match teacher settings
             const QR_REFRESH_SECONDS = 30;
             const QR_SECRET = process.env.NEXT_PUBLIC_QR_SECRET || 'FALLBACK_SECRET';

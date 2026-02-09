@@ -123,14 +123,14 @@ export default function SeedPage() {
         addLog(`🔄 Resetting device_id for NIS: ${nis}...`);
 
         const { data, error } = await supabase
-            .from('profiles')
+            .from('students')
             .update({ device_id: null })
             .eq('nis', nis)
             .select();
 
         if (error) {
             addLog(`❌ Error resetting device ID: ${error.message}`);
-        } else if (data.length === 0) {
+        } else if (!data || data.length === 0) {
             addLog(`⚠️ User with NIS ${nis} not found.`);
         } else {
             addLog(`✅ SUCCESS! Device ID for ${data[0].full_name} has been cleared.`);

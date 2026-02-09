@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
     Plus,
@@ -31,7 +31,7 @@ const DAYS = [
     { value: 7, label: 'Minggu' },
 ];
 
-export default function SchedulesPage() {
+function SchedulesContent() {
     const [schedules, setSchedules] = useState<any[]>([]);
     const [teachers, setTeachers] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
@@ -388,5 +388,18 @@ export default function SchedulesPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function SchedulesPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <Loader2 className="h-10 w-10 animate-spin mb-4 text-blue-600" />
+                <p className="font-medium animate-pulse">Memuat jadwal...</p>
+            </div>
+        }>
+            <SchedulesContent />
+        </Suspense>
     );
 }

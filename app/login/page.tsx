@@ -98,6 +98,23 @@ export default function LoginPage() {
                     throw new Error(password === '' ? 'PIN wajib diisi!' : 'PIN salah!');
                 }
 
+                // DEVICE BINDING LOGIC
+                const currentDeviceId = getDeviceId();
+                if (!student.device_id) {
+                    // First time login - bind device
+                    const { error: bindError } = await supabase
+                        .from('students')
+                        .update({ device_id: currentDeviceId })
+                        .eq('id', student.id);
+
+                    if (bindError) {
+                        console.error('Device Binding Error:', bindError);
+                    }
+                } else if (student.device_id !== currentDeviceId) {
+                    // Device mismatch
+                    throw new Error('Akun ini sudah terhubung dengan perangkat lain. Hubungi Admin untuk mereset.');
+                }
+
                 // Set Cookie for Middleware
                 const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
                 document.cookie = `user_role=student; path=/; expires=${expires}`;

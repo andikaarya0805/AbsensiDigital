@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
     Plus,
@@ -23,7 +23,7 @@ import {
 import { createClient } from '@/lib/supabase';
 import { useToast } from '@/components/Toast';
 
-export default function StudentsPage() {
+function StudentsContent() {
     const [students, setStudents] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -401,5 +401,18 @@ export default function StudentsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function StudentsPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <Loader2 className="h-10 w-10 animate-spin mb-4 text-blue-600" />
+                <p className="font-medium animate-pulse">Memuat data siswa...</p>
+            </div>
+        }>
+            <StudentsContent />
+        </Suspense>
     );
 }

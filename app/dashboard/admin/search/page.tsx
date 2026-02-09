@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
@@ -13,7 +13,7 @@ import {
     FileText
 } from 'lucide-react';
 
-export default function SearchPage() {
+function SearchContent() {
     const searchParams = useSearchParams();
     const query = searchParams.get('q') || '';
     const router = useRouter();
@@ -150,5 +150,18 @@ export default function SearchPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function SearchPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <Loader2 className="h-10 w-10 animate-spin mb-4 text-blue-600" />
+                <p className="font-medium animate-pulse">Memuat halaman...</p>
+            </div>
+        }>
+            <SearchContent />
+        </Suspense>
     );
 }
