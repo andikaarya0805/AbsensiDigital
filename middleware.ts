@@ -64,8 +64,12 @@ export async function middleware(request: NextRequest) {
         if (!user && !userSession) {
             return NextResponse.redirect(new URL('/login', request.url))
         }
-        // Prevent admins or students from staying here if we want absolute separation
-        // For convenience, admins might be allowed in teacher areas, but teachers NEVER in admin.
+        // STRICT SEPARATION: Admin tidak boleh masuk ke dashboard teacher.
+        // Redirect mereka kembali ke dashboard admin.
+        if (userRole === 'admin') {
+            return NextResponse.redirect(new URL('/dashboard/admin', request.url))
+        }
+
         if (userRole === 'student') {
             return NextResponse.redirect(new URL('/dashboard/student', request.url))
         }

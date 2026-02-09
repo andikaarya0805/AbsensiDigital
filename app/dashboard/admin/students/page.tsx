@@ -18,7 +18,8 @@ import {
     Hash,
     BookOpen,
     Key,
-    Filter
+    Filter,
+    AlertTriangle
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { useToast } from '@/components/Toast';
@@ -39,6 +40,8 @@ function StudentsContent() {
         recovery_email: ''
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [studentToDelete, setStudentToDelete] = useState<any>(null);
 
     const supabase = createClient();
     const { showToast } = useToast();
@@ -117,13 +120,18 @@ function StudentsContent() {
         setIsSaving(false);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Apakah Anda yakin ingin menghapus siswa ini?')) return;
+    const handleDelete = (student: any) => {
+        setStudentToDelete(student);
+        setShowDeleteModal(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!studentToDelete) return;
 
         const { error } = await supabase
             .from('students')
             .delete()
-            .eq('id', id);
+            .eq('id', studentToDelete.id);
 
         if (error) {
             showToast('Gagal menghapus siswa', 'error');
@@ -131,6 +139,8 @@ function StudentsContent() {
             showToast('Siswa berhasil dihapus', 'success');
             fetchData();
         }
+        setShowDeleteModal(false);
+        setStudentToDelete(null);
     };
 
     const openModal = (student: any = null) => {
@@ -263,7 +273,7 @@ function StudentsContent() {
                                                     <Edit2 className="h-4 w-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(student.id)}
+                                                    onClick={() => handleDelete(student)}
                                                     className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
@@ -397,6 +407,38 @@ function StudentsContent() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100 dark:border-slate-800">
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <AlertTriangle className="h-8 w-8" />
+                            </div>
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Hapus Siswa Ini?</h3>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                                Anda yakin ingin menghapus <span className="font-bold text-slate-900 dark:text-white">{studentToDelete?.full_name}</span>? Tindakan ini tidak dapat dibatalkan.
+                            </p>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowDeleteModal(false)}
+                                    className="flex-1 px-4 py-3 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    onClick={confirmDelete}
+                                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all shadow-lg shadow-red-100"
+                                >
+                                    Ya, Hapus
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
