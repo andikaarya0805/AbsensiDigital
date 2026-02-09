@@ -58,11 +58,17 @@ export default function TeacherDashboard() {
     const { showToast } = useToast();
     const { theme, toggleTheme } = useTheme();
 
-    // QR Security Config
-    const QR_REFRESH_SECONDS = 30; // Refresh setiap 30 detik
+    /**
+     * Security Configuration for Dynamic QR Codes.
+     * QR codes refresh every 30 seconds and include a secret for integrity.
+     */
+    const QR_REFRESH_SECONDS = 30;
     const QR_SECRET = process.env.NEXT_PUBLIC_QR_SECRET || 'FALLBACK_SECRET';
 
-    // Generate Dynamic QR Value with session
+    /**
+     * Generates a new dynamic QR value based on current timestamp and session.
+     * The format matches the validation logic in the student scanner.
+     */
     const generateQR = () => {
         const timestamp = Math.floor(Date.now() / (QR_REFRESH_SECONDS * 1000));
         const session = sessionName || 'DEFAULT';
@@ -82,7 +88,7 @@ export default function TeacherDashboard() {
             });
         }, 1000);
 
-        // Fetch Attendance Realtime
+        // Fetch recent attendance logs (initial load)
         const fetchAttendance = async () => {
             const { data, error } = await supabase
                 .from('attendance')
@@ -99,7 +105,10 @@ export default function TeacherDashboard() {
 
         fetchAttendance();
 
-        // Subscribe to new attendance
+        /**
+         * Real-time Subscription: 
+         * Automatically updates the list when a new student scans the QR code.
+         */
         const channel = supabase
             .channel('attendance_updates')
             .on(

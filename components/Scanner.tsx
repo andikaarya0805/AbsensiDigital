@@ -12,8 +12,12 @@ interface ScannerProps {
 export default function Scanner({ onScanSuccess, onScanError }: ScannerProps) {
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
+    /**
+     * Initializes the QR scanner using the html5-qrcode library.
+     * Configured for optimal mobile performance and camera switching.
+     */
     useEffect(() => {
-        // Standard setup for html5-qrcode
+        // Standard setup for current html5-qrcode version
         scannerRef.current = new Html5QrcodeScanner(
             "qr-reader",
             {
@@ -48,6 +52,7 @@ export default function Scanner({ onScanSuccess, onScanError }: ScannerProps) {
         );
 
         return () => {
+            // Cleanup: stop camera and clear scanner resources on unmount
             scannerRef.current?.clear();
         };
     }, [onScanSuccess, onScanError]);

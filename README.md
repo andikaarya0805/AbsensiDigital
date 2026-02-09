@@ -6,12 +6,12 @@
 
 ## ✨ Fitur Unggulan
 
-- **🛡️ Login Berbasis NIS**: Login simpel menggunakan Nomor Induk Siswa. Akun otomatis disinkronkan ke Supabase Auth saat pertama kali masuk.
+- **🛡️ Login Berbasis NIS/NIP**: Login simpel menggunakan Nomor Induk Siswa atau NIP Guru. Sistem menggunakan database internal untuk autentikasi yang lebih cepat dan fleksibel.
 - **🔄 Dynamic QR Code**: QR Code yang berubah setiap 30 detik untuk mencegah kecurangan (titip absen).
 - **📍 Smart Geofencing**: Absen hanya bisa dilakukan jika siswa berada dalam radius yang ditentukan dari titik sekolah.
-- **📱 Device Binding**: Satu akun terkunci pada satu perangkat. Tidak bisa absen dari HP orang lain!
-- **⚡ Real-time Dashboard**: Guru dapat memantau kehadiran siswa secara live tanpa perlu refresh halaman.
-- **🔑 Auto-Account Sync**: Cukup masukkan data di tabel `profiles`, akun login akan dibuat otomatis saat siswa login pertama kali.
+- **📱 Device Binding**: Satu akun terkunci pada satu perangkat (1 Account, 1 Device). Tidak bisa absen dari HP orang lain!
+- **⚡ Real-time Dashboard**: Guru dan Admin dapat memantau kehadiran siswa secara live.
+- **🛠️ Admin Tools**: Dilengkapi dengan halaman `/seed` untuk manajemen data, registrasi guru, dan reset binding perangkat siswa.
 
 ## 🚀 Tech Stack
 
@@ -19,7 +19,6 @@
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Backend & Database**: [Supabase](https://supabase.com/) (Auth, Database, Realtime)
 - **Icons**: [Lucide React](https://lucide.dev/)
-- **Components**: Framer Motion & Radix UI (Coming Soon)
 
 ## 🛠️ Persiapan & Instalasi
 
@@ -39,46 +38,98 @@ Buat file `.env.local` dan isi dengan kunci API dari Dashboard Supabase kamu:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key (Penting untuk Auto-Sync)
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+NEXT_PUBLIC_QR_SECRET=your_qr_secret
 ```
 
 ### 4. Setup Database
-Jalankan query berikut di **SQL Editor** Supabase:
+Jalankan query berikut di **SQL Editor** Supabase untuk struktur dasar yang sesuai dengan sistem HadirMu:
+
 ```sql
--- Tabel Profil Pengguna
-CREATE TABLE public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
-  nis TEXT UNIQUE NOT NULL,
+-- 1. Tabel Kelas
+CREATE TABLE public.classes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  level INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Tabel Siswa
+CREATE TABLE public.students (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name TEXT,
+  nis TEXT UNIQUE NOT NULL,
+  password TEXT DEFAULT '123456',
   role TEXT DEFAULT 'student',
+  class_id UUID REFERENCES public.classes(id),
   device_id TEXT,
+  whatsapp_number TEXT,
+  telegram_chat_id TEXT,
+  telegram_username TEXT,
+  avatar_url TEXT,
+  verification_token TEXT,
   first_login BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabel Absensi
-CREATE TABLE public.attendance (
-  id BIGSERIAL PRIMARY KEY,
-  student_id UUID REFERENCES public.profiles(id),
-  status TEXT DEFAULT 'present',
-  timestamp TIMESTAMPTZ DEFAULT NOW(),
-  class_id TEXT DEFAULT 'MAIN_CLASS'
+-- 3. Tabel Guru
+CREATE TABLE public.teachers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nip TEXT UNIQUE,
+  full_name TEXT,
+  email TEXT UNIQUE,
+  password TEXT,
+  role TEXT DEFAULT 'teacher',
+  subject TEXT,
+  phone TEXT,
+  whatsapp_number TEXT,
+  device_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Aktifkan Realtime untuk tabel attendance
+-- 4. Tabel Jadwal
+CREATE TABLE public.schedules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  teacher_id UUID REFERENCES public.teachers(id) ON DELETE CASCADE,
+  class_id UUID REFERENCES public.classes(id) ON DELETE CASCADE,
+  subject_id UUID,
+  class_name TEXT,
+  subject TEXT,
+  day_of_week INTEGER, -- 1 (Senin) - 7 (Minggu)
+  start_time TIME,
+  end_time TIME,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. Tabel Absensi
+CREATE TABLE public.attendance (
+  id BIGSERIAL PRIMARY KEY,
+  student_id UUID REFERENCES public.students(id) ON DELETE CASCADE,
+  status_type TEXT DEFAULT 'hadir', -- hadir, izin, sakit, alpa
+  session_name TEXT,
+  class_id UUID REFERENCES public.classes(id),
+  timestamp TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Aktifkan Realtime untuk tabel attendance agar dapat dipantau Live
 ALTER PUBLICATION supabase_realtime ADD TABLE attendance;
 ```
 
+## 🛡️ Implementasi Keamanan
+
+1.  **Row Level Security (RLS)**: Data siswa aman dari akses orang lain. Siswa hanya bisa `INSERT` (Absen) tapi tidak bisa `DELETE/UPDATE`, sedangkan Guru memiliki akses penuh ke manajemen data.
+2.  **Device Binding**: Satu akun terkunci pada satu perangkat (1 Account, 1 Device) untuk mencegah kecurangan absen jarak jauh.
+3.  **Dynamic QR Code**: QR Code yang valid hanya dalam waktu 30 detik untuk mencegah titip absen via screenshot.
+4.  **Middleware Protection**: Rute dashboard dilindungi oleh middleware yang memvalidasi role dan session user.
+5.  **Environment Variables**: Kunci rahasia disimpan dengan aman di `.env.local`.
+
 ## 📖 Cara Penggunaan
 
-1.  **Admin/Guru**: Menambahkan data murid (Nama & NIS) ke dalam tabel `profiles`.
-2.  **Guru**: Membuka Dashboard Guru untuk menampilkan QR Code Dinamis.
-3.  **Siswa**: Login menggunakan NIS (Password default: `123456`), jika pertama kali akan diminta ganti password.
-4.  **Siswa**: Scan QR Code di laptop Guru. Pastikan GPS aktif!
-5.  **Selesai**: Data kehadiran muncul secara Real-time di layar Guru.
-
-## 🤝 Kontribusi
-Kontribusi selalu terbuka! Silakan lakukan *Fork* repository ini dan kirimkan *Pull Request*.
+1.  **Admin**: Menambahkan data Kelas, Siswa, dan Guru ke dalam tabel masing-masing.
+2.  **Guru**: Membuka Dashboard Guru untuk menampilkan QR Code Dinamis sesuai jadwal.
+3.  **Siswa**: Login menggunakan NIS (Password default: `123456`). Jika pertama kali, siswa akan diminta mengamankan akun.
+4.  **Siswa**: Scan QR Code di perangkat Guru saat sesi pelajaran berlangsung.
+5.  **Selesai**: Data kehadiran otomatis terupdate di Dashboard Guru secara Real-time.
 
 ---
 Dibuat dengan ❤️ untuk kemajuan pendidikan Indonesia. 🇮🇩

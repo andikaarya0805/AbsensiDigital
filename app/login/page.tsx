@@ -45,8 +45,14 @@ export default function LoginPage() {
         try {
             const input = identifier.trim();
 
-            // 1. Unified Search: Check BOTH tables for identifier (Email, NIP, or NIS)
-            // Handle as Teacher search first
+            /**
+             * Unified Authentication Strategy:
+             * 1. Search the 'teachers' table for Email or NIP.
+             * 2. Search the 'students' table for NIS or Recovery Email.
+             * 3. Validate passwords locally (for students) or via Supabase (for teachers).
+             */
+
+            // Search Teacher first
             const { data: teacher } = await supabase
                 .from('teachers')
                 .select('*')
@@ -98,10 +104,12 @@ export default function LoginPage() {
                     throw new Error(password === '' ? 'PIN wajib diisi!' : 'PIN salah!');
                 }
 
-                // DEVICE BINDING LOGIC
+                // ==========================================
+                // DEVICE BINDING SECURITY
+                // ==========================================
                 const currentDeviceId = getDeviceId();
                 if (!student.device_id) {
-                    // First time login - bind device
+                    // Initial binding on first login
                     const { error: bindError } = await supabase
                         .from('students')
                         .update({ device_id: currentDeviceId })
@@ -111,7 +119,7 @@ export default function LoginPage() {
                         console.error('Device Binding Error:', bindError);
                     }
                 } else if (student.device_id !== currentDeviceId) {
-                    // Device mismatch
+                    // Block access if device doesn't match the registered record
                     throw new Error('Akun ini sudah terhubung dengan perangkat lain. Hubungi Admin untuk mereset.');
                 }
 
@@ -134,10 +142,11 @@ export default function LoginPage() {
                 if (rememberMe) localStorage.setItem('remembered_id', input);
                 else localStorage.removeItem('remembered_id');
 
-                // Redirect
+                // Successful Student Login - Final Step: Redirect
                 window.location.href = studentPassword === '123456' ? '/dashboard/student/setup' : '/dashboard/student';
 
             } else {
+                // If identifier is not found in either table
                 throw new Error('Identitas (NIS/NIP/Email) tidak ditemukan dalam sistem.');
             }
 

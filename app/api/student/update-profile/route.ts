@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
+/**
+ * Direct Database Access Client.
+ * Uses SERVICE_ROLE_KEY to bypass Row Level Security (RLS) for 
+ * administrative profile updates (e.g. changing passwords/whatsapp).
+ */
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -13,6 +18,7 @@ export async function POST(req: Request) {
         console.log('Update Profile Request for ID:', id);
         console.log('New Password length:', password?.length);
 
+        // Dynamically build update object based on provided fields
         const updateData: any = {};
         if (full_name !== undefined) updateData.full_name = full_name;
         if (password !== undefined) updateData.password = password;

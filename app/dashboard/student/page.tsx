@@ -88,6 +88,10 @@ export default function StudentDashboard() {
         }
     }, []);
 
+    /**
+     * Periodically checks if the student's account is verified via Telegram/WA.
+     * Generates a verification link if the account is currently unverified.
+     */
     const checkVerification = async (nis: string) => {
         try {
             const res = await fetch(`/api/student/verify-token?nis=${nis}`);
@@ -95,7 +99,7 @@ export default function StudentDashboard() {
             setIsVerified(data.verified);
 
             if (!data.verified) {
-                // Generate Link if not verified
+                // Generate a one-time verification link
                 const linkRes = await fetch('/api/student/verify-token', {
                     method: 'POST',
                     body: JSON.stringify({ nis }),
@@ -104,7 +108,7 @@ export default function StudentDashboard() {
                 const linkData = await linkRes.json();
                 setVerificationLink(linkData.link);
 
-                // Start Polling
+                // Start polling until the user completes verification on Telegram
                 const interval = setInterval(async () => {
                     const pollRes = await fetch(`/api/student/verify-token?nis=${nis}`);
                     const pollData = await pollRes.json();
@@ -113,15 +117,17 @@ export default function StudentDashboard() {
                         clearInterval(interval);
                         showToast("Akun Anda Berhasil Diverifikasi!", "success");
                     }
-                }, 3000); // Check every 3 seconds
-
-                // Cleanup interval on unmount (not handled here cleanly but OK for simple page)
+                }, 3000); // Check status every 3 seconds
             }
         } catch (e) {
             console.error("Verification Check Error:", e);
         }
     };
 
+    /**
+     * Processes the scanned QR code content.
+     * Validates: Format, Secret, Timestamp, and Device ID.
+     */
     const handleScan = useCallback(async (decodedText: string) => {
         if (!isVerified) {
             showToast("Harap verifikasi akun Telegram Anda terlebih dahulu!", "error");
@@ -138,17 +144,19 @@ export default function StudentDashboard() {
         setStatus('scanning');
 
         try {
-            // DEVICE ID VERIFICATION
+            // SECURITY CHECK: Device Identity
             const currentDeviceId = getDeviceId();
             if (profile.device_id && profile.device_id !== currentDeviceId) {
                 throw new Error('Perangkat ini tidak terdaftar untuk akun Anda. Gunakan perangkat asli atau hubungi Admin.');
             }
 
-            // Security Config - must match teacher settings
+            // QR Security Configuration (must be synced with teacher settings)
             const QR_REFRESH_SECONDS = 30;
             const QR_SECRET = process.env.NEXT_PUBLIC_QR_SECRET || 'FALLBACK_SECRET';
 
-            // Expected format: HADIR_SESSION_{timestamp}_{secret}_{sessionName}
+            /**
+             * Expected QR Format: HADIR_SESSION_{timestamp}_{secret}_{sessionName}
+             */
             const parts = decodedText.split('_');
             console.log('Scanned QR:', decodedText);
 

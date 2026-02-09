@@ -1,5 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * Generates or retrieves a unique device ID from localStorage.
+ * Used for Device Binding functionality to ensure 1 account per 1 device.
+ */
+
 export const getDeviceId = (): string => {
     if (typeof window === 'undefined') return '';
 
@@ -11,6 +16,11 @@ export const getDeviceId = (): string => {
     return deviceId;
 };
 
+
+/**
+ * Calculates the distance between two coordinates in meters.
+ * Uses the Haversine formula for spherical distance.
+ */
 export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371e3; // metres
     const φ1 = (lat1 * Math.PI) / 180;

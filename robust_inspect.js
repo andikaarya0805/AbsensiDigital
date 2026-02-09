@@ -16,13 +16,27 @@ const supabaseKey = getEnv('SUPABASE_SERVICE_ROLE_KEY');
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function inspect() {
-  console.log("--- STUDENTS TABLE ---");
-  const { data: sData } = await supabase.from('students').select('*').limit(1);
-  if (sData && sData[0]) Object.keys(sData[0]).forEach(k => console.log(`COL: ${k}`));
+  const tables = ['students', 'teachers', 'attendance', 'schedules', 'classes'];
+  let output = "";
   
-  console.log("\n--- TEACHERS TABLE ---");
-  const { data: tData } = await supabase.from('teachers').select('*').limit(1);
-  if (tData && tData[0]) Object.keys(tData[0]).forEach(k => console.log(`COL: ${k}`));
+  for (const table of tables) {
+    output += `\n--- ${table.toUpperCase()} TABLE ---\n`;
+    const { data, error } = await supabase.from(table).select('*').limit(1);
+    
+    if (error) {
+       output += `Error inspecting ${table}: ${error.message}\n`;
+       continue;
+    }
+    
+    if (data && data.length > 0) {
+      output += `Columns: ${JSON.stringify(Object.keys(data[0]))}\n`;
+    } else {
+      output += `No data found in ${table}\n`;
+    }
+  }
+  
+  fs.writeFileSync('schema_result.txt', output);
+  console.log("Schema written to schema_result.txt");
 }
 
 inspect();
