@@ -1,0 +1,673 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { COLORS, RADIUS, SHADOW } from '../../constants/theme';
+import { supabase } from '../../lib/supabase';
+import { 
+  Plus, Search, MoreVertical, Edit2, Trash2, 
+  GraduationCap, ChevronLeft, X, Save, 
+  Mail, BookOpen, Key, Loader2, Hash, Filter
+} from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+
+export default function AdminStudentsScreen() {
+    const router = useRouter();
+    const [students, setStudents] = useState<any[]>([]);
+    const [classes, setClasses] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedClassId, setSelectedClassId] = useState<string>('all');
+    const [showModal, setShowModal] = useState(false);
+    const [editingStudent, setEditingStudent] = useState<any>(null);
+    const [formData, setFormData] = useState({
+        full_name: '',
+        nis: '',
+        class_id: '',
+        password: '123456',
+        recovery_email: ''
+    });
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            
+            // 1. Fetch Classes
+            const { data: classesData } = await supabase
+                .from('classes')
+                .select('*')
+                .order('name');
+            setClasses(classesData || []);
+
+            // 2. Fetch Students (Web Parity Logic)
+            const { data: studentsData, error } = await supabase
+                .from('students')
+                .select('*, classes(name)')
+                .eq('role', 'student')
+                .order('full_name', { ascending: true });
+
+            if (error) throw error;
+            setStudents(studentsData || []);
+        } catch (error: any) {
+            Alert.alert('Error', 'Gagal memuat data: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!formData.full_name || !formData.nis || !formData.class_id) {
+            Alert.alert('Peringatan', 'Nama, NIS, dan Kelas wajib diisi');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const payload: any = {
+                full_name: formData.full_name,
+                nis: formData.nis,
+                class_id: formData.class_id,
+                password: formData.password,
+                recovery_email: formData.recovery_email || null,
+                role: 'student'
+            };
+
+            if (editingStudent) {
+                const { error } = await supabase
+                    .from('students')
+                    .update(payload)
+                    .eq('id', editingStudent.id);
+                if (error) throw error;
+                Alert.alert('Sukses', 'Data siswa berhasil diperbarui');
+            } else {
+                const { error } = await supabase
+                    .from('students')
+                    .insert([payload]);
+                if (error) throw error;
+                Alert.alert('Sukses', 'Siswa berhasil ditambahkan');
+            }
+
+            setShowModal(false);
+            fetchData();
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDelete = (student: any) => {
+        Alert.alert(
+            'Hapus Siswa?',
+            `Yakin ingin menghapus "${student.full_name}"?`,
+            [
+                { text: 'Batal', style: 'cancel' },
+                { 
+                    text: 'Hapus', 
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const { error } = await supabase
+                                .from('students')
+                                .delete()
+                                .eq('id', student.id);
+                            if (error) throw error;
+                            fetchData();
+                        } catch (error: any) {
+                            Alert.alert('Error', 'Gagal menghapus: ' + error.message);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const openModal = (student: any = null) => {
+        if (student) {
+            setEditingStudent(student);
+            setFormData({
+                full_name: student.full_name || '',
+                nis: student.nis || '',
+                class_id: student.class_id || '',
+                password: student.password || '123456',
+                recovery_email: student.recovery_email || ''
+            });
+        } else {
+            setEditingStudent(null);
+            setFormData({
+                full_name: '',
+                nis: '',
+                class_id: classes.length > 0 ? classes[0].id : '',
+                password: '123456',
+                recovery_email: ''
+            });
+        }
+        setShowModal(true);
+    };
+
+    const filteredStudents = students.filter(s => {
+        const matchesSearch = s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || s.nis?.includes(searchTerm);
+        const matchesClass = selectedClassId === 'all' || s.class_id === selectedClassId;
+        return matchesSearch && matchesClass;
+    });
+
+    return (
+        <View style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                    <ChevronLeft size={24} color={COLORS.text} />
+                </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.headerTitle}>Manajemen Siswa</Text>
+                    <Text style={styles.headerSub}>Total {students.length} siswa aktif</Text>
+                </View>
+                <TouchableOpacity style={styles.addBtn} onPress={() => openModal()}>
+                    <Plus size={24} color="#fff" />
+                </TouchableOpacity>
+            </View>
+
+            {/* Toolbar (Search & Filter) */}
+            <View style={styles.toolbar}>
+                <View style={[styles.searchBox, SHADOW.sm]}>
+                    <Search size={16} color={COLORS.textSub} style={styles.searchIcon} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Cari siswa (Nama/NIS)..."
+                        placeholderTextColor={COLORS.textSub}
+                        value={searchTerm}
+                        onChangeText={setSearchTerm}
+                    />
+                </View>
+                
+                <View style={styles.filterRow}>
+                   <Filter size={14} color={COLORS.textSub} />
+                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.classFilter}>
+                        <TouchableOpacity 
+                          style={[styles.classTab, selectedClassId === 'all' && styles.classTabActive]}
+                          onPress={() => setSelectedClassId('all')}
+                        >
+                            <Text style={[styles.classTabText, selectedClassId === 'all' && styles.classTabTextActive]}>Semua</Text>
+                        </TouchableOpacity>
+                        {classes.map(cls => (
+                            <TouchableOpacity 
+                              key={cls.id}
+                              style={[styles.classTab, selectedClassId === cls.id && styles.classTabActive]}
+                              onPress={() => setSelectedClassId(cls.id)}
+                            >
+                                <Text style={[styles.classTabText, selectedClassId === cls.id && styles.classTabTextActive]}>{cls.name}</Text>
+                            </TouchableOpacity>
+                        ))}
+                   </ScrollView>
+                </View>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.listContent}>
+                {loading ? (
+                    <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
+                ) : filteredStudents.length > 0 ? (
+                    filteredStudents.map((student, idx) => (
+                        <View key={student.id} style={styles.studentCard}>
+                            <View style={styles.cardMain}>
+                                <View style={styles.avatarBox}>
+                                    <GraduationCap size={24} color={COLORS.success} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.studentName}>{student.full_name}</Text>
+                                    <View style={styles.metaRow}>
+                                        <Hash size={10} color={COLORS.textSub} />
+                                        <Text style={styles.studentNis}>{student.nis}</Text>
+                                        <Text style={styles.metaDivider}>•</Text>
+                                        <BookOpen size={10} color={COLORS.textSub} />
+                                        <Text style={styles.studentClass}>{student.classes?.name || 'No Class'}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.actionRow}>
+                                    <TouchableOpacity style={styles.iconAction} onPress={() => openModal(student)}>
+                                        <Edit2 size={16} color={COLORS.primary} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.iconAction} onPress={() => handleDelete(student)}>
+                                        <Trash2 size={16} color={COLORS.danger} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                            {student.recovery_email && (
+                                <View style={styles.cardFooter}>
+                                    <Mail size={12} color={COLORS.textSub} />
+                                    <Text style={styles.footerText}>{student.recovery_email}</Text>
+                                </View>
+                            )}
+                        </View>
+                    ))
+                ) : (
+                    <View style={styles.emptyContainer}>
+                        <GraduationCap size={48} color={COLORS.border} />
+                        <Text style={styles.emptyText}>Tidak ada siswa yang ditemukan</Text>
+                    </View>
+                )}
+            </ScrollView>
+
+            {/* Form Modal */}
+            <Modal visible={showModal} animationType="slide" transparent={true}>
+                <KeyboardAvoidingView 
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                  style={styles.modalOverlay}
+                >
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <View>
+                                <Text style={styles.modalTitle}>{editingStudent ? 'Update Siswa' : 'Tambah Siswa'}</Text>
+                                <Text style={styles.modalSubHeader}>Lengkapi data akademik</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setShowModal(false)} style={styles.closeBtn}>
+                                <X size={24} color={COLORS.textSub} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.formContent}>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>NAMA LENGKAP SISWA</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Contoh: Andi Wijaya"
+                                    placeholderTextColor={COLORS.border}
+                                    value={formData.full_name}
+                                    onChangeText={(text) => setFormData({...formData, full_name: text})}
+                                />
+                            </View>
+
+                            <View style={styles.inputRow}>
+                                <View style={[styles.inputGroup, { flex: 1 }]}>
+                                    <Text style={styles.inputLabel}>NIS (USERNAME)</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="12..."
+                                        placeholderTextColor={COLORS.border}
+                                        value={formData.nis}
+                                        onChangeText={(text) => setFormData({...formData, nis: text})}
+                                    />
+                                </View>
+                                <View style={[styles.inputGroup, { flex: 1, marginLeft: 12 }]}>
+                                    <Text style={styles.inputLabel}>KELAS</Text>
+                                    <View style={styles.selectWrapper}>
+                                        <TextInput
+                                            style={[styles.input, { opacity: 0.5 }]}
+                                            editable={false}
+                                            value={classes.find(c => c.id === formData.class_id)?.name || 'Pilih...'}
+                                        />
+                                        <ScrollView style={styles.miniPicker}>
+                                            {classes.map(c => (
+                                                <TouchableOpacity 
+                                                  key={c.id} 
+                                                  onPress={() => setFormData({...formData, class_id: c.id})}
+                                                  style={[styles.pickerItem, formData.class_id === c.id && { backgroundColor: COLORS.primary + '10' }]}
+                                                >
+                                                    <Text style={[styles.pickerText, formData.class_id === c.id && { color: COLORS.primary }]}>{c.name}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>PASSWORD LOGIN (DEFAULT: 123456)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="******"
+                                    placeholderTextColor={COLORS.border}
+                                    secureTextEntry
+                                    value={formData.password}
+                                    onChangeText={(text) => setFormData({...formData, password: text})}
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>EMAIL PEMULIHAN (OPSIONAL)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="siswa@gmail.com"
+                                    placeholderTextColor={COLORS.border}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    value={formData.recovery_email}
+                                    onChangeText={(text) => setFormData({...formData, recovery_email: text})}
+                                />
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
+                                <Text style={styles.cancelText}>Batal</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={isSaving}>
+                                {isSaving ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <>
+                                        <Save size={18} color="#fff" />
+                                        <Text style={styles.saveText}>Simpan</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: COLORS.bg,
+    },
+    header: {
+        paddingTop: 60,
+        paddingHorizontal: 24,
+        paddingBottom: 20,
+        backgroundColor: COLORS.card,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+    },
+    backBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: RADIUS.lg,
+        backgroundColor: COLORS.bg,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: COLORS.text,
+    },
+    headerSub: {
+        fontSize: 12,
+        color: COLORS.textSub,
+    },
+    addBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: RADIUS.lg,
+        backgroundColor: COLORS.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...SHADOW.primary,
+    },
+    toolbar: {
+        padding: 24,
+        paddingBottom: 8,
+    },
+    searchBox: {
+        backgroundColor: COLORS.card,
+        borderRadius: RADIUS.xl,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        marginBottom: 16,
+    },
+    searchIcon: {
+        marginRight: 10,
+    },
+    searchInput: {
+        flex: 1,
+        height: 50,
+        fontSize: 14,
+        color: COLORS.text,
+        fontWeight: '600',
+    },
+    filterRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    classFilter: {
+        gap: 8,
+        paddingRight: 20,
+    },
+    classTab: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: RADIUS.full,
+        backgroundColor: COLORS.card,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    classTabActive: {
+        backgroundColor: COLORS.text,
+        borderColor: COLORS.text,
+    },
+    classTabText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: COLORS.textSub,
+    },
+    classTabTextActive: {
+        color: COLORS.card,
+    },
+    listContent: {
+        padding: 24,
+        paddingBottom: 40,
+    },
+    studentCard: {
+        backgroundColor: COLORS.card,
+        borderRadius: RADIUS.xl,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        ...SHADOW.sm,
+    },
+    cardMain: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    avatarBox: {
+        width: 48,
+        height: 48,
+        borderRadius: RADIUS.lg,
+        backgroundColor: COLORS.success + '10',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    studentName: {
+        fontSize: 15,
+        fontWeight: '900',
+        color: COLORS.text,
+    },
+    metaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+    },
+    studentNis: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: COLORS.textSub,
+        fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    },
+    metaDivider: {
+        color: COLORS.border,
+        fontSize: 10,
+    },
+    studentClass: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: COLORS.primary,
+        textTransform: 'uppercase',
+    },
+    actionRow: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    iconAction: {
+        width: 32,
+        height: 32,
+        borderRadius: RADIUS.md,
+        backgroundColor: COLORS.bg,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    cardFooter: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.bg,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    footerText: {
+        fontSize: 11,
+        color: COLORS.textSub,
+        fontWeight: '600',
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        paddingVertical: 80,
+        opacity: 0.5,
+    },
+    emptyText: {
+        marginTop: 12,
+        color: COLORS.textSub,
+        fontWeight: '700',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: COLORS.bg,
+        borderTopLeftRadius: RADIUS.xl,
+        borderTopRightRadius: RADIUS.xl,
+        maxHeight: '90%',
+    },
+    modalHeader: {
+        padding: 24,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+        backgroundColor: COLORS.card,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '900',
+        color: COLORS.text,
+    },
+    modalSubHeader: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: COLORS.textSub,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginTop: 2,
+    },
+    closeBtn: {
+        padding: 4,
+    },
+    formContent: {
+        padding: 24,
+    },
+    inputGroup: {
+        marginBottom: 20,
+    },
+    inputRow: {
+        flexDirection: 'row',
+        marginBottom: 8,
+    },
+    inputLabel: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: COLORS.text,
+        marginBottom: 8,
+        letterSpacing: 1,
+    },
+    input: {
+        backgroundColor: COLORS.card,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: RADIUS.lg,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 14,
+        fontWeight: '700',
+        color: COLORS.text,
+    },
+    selectWrapper: {
+        position: 'relative',
+    },
+    miniPicker: {
+        maxHeight: 120,
+        backgroundColor: COLORS.card,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: RADIUS.lg,
+        marginTop: 4,
+    },
+    pickerItem: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.bg,
+    },
+    pickerText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: COLORS.text,
+    },
+    modalFooter: {
+        padding: 24,
+        flexDirection: 'row',
+        gap: 12,
+        backgroundColor: COLORS.card,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.border,
+    },
+    cancelBtn: {
+        flex: 1,
+        height: 54,
+        borderRadius: RADIUS.lg,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cancelText: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: COLORS.textSub,
+    },
+    saveBtn: {
+        flex: 2,
+        height: 54,
+        backgroundColor: COLORS.primary,
+        borderRadius: RADIUS.lg,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 10,
+        ...SHADOW.primary,
+    },
+    saveText: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#fff',
+    },
+});

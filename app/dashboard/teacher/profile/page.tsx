@@ -26,11 +26,6 @@ export default function TeacherProfilePage() {
         whatsapp_number: ''
     });
 
-    const [verifyingWA, setVerifyingWA] = useState(false);
-    const [waOTP, setWaOTP] = useState('');
-    const [waStep, setWaStep] = useState<'input' | 'otp'>('input');
-    const [isWaVerified, setIsWaVerified] = useState(false);
-
     useEffect(() => {
         const fetchProfile = async () => {
             setLoading(true);
@@ -58,7 +53,6 @@ export default function TeacherProfilePage() {
                         email: data.email || '',
                         whatsapp_number: data.whatsapp_number || ''
                     });
-                    setIsWaVerified(!!data.whatsapp_number);
                 }
             } catch (error) {
                 console.error("Error fetching profile:", error);
@@ -70,59 +64,6 @@ export default function TeacherProfilePage() {
 
         fetchProfile();
     }, [router, supabase]);
-
-    const handleSendWAOTP = async () => {
-        if (!formData.whatsapp_number) {
-            setMessage({ type: 'error', text: 'Masukkan nomor WhatsApp terlebih dahulu.' });
-            return;
-        }
-        setVerifyingWA(true);
-        try {
-            const res = await fetch('/api/auth/verify-wa-send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    whatsapp_number: formData.whatsapp_number,
-                    userId: formData.id,
-                    role: 'teacher'
-                })
-            });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error);
-            setWaStep('otp');
-            setMessage({ type: 'success', text: 'Kode OTP telah dikirim ke WhatsApp Anda.' });
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message });
-        } finally {
-            setVerifyingWA(false);
-        }
-    };
-
-    const handleConfirmWAOTP = async () => {
-        if (!waOTP) return;
-        setVerifyingWA(true);
-        try {
-            const res = await fetch('/api/auth/verify-wa-confirm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    whatsapp_number: formData.whatsapp_number,
-                    otp: waOTP,
-                    userId: formData.id,
-                    role: 'teacher'
-                })
-            });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error);
-            setIsWaVerified(true);
-            setWaStep('input');
-            setMessage({ type: 'success', text: 'Nomor WhatsApp berhasil diverifikasi!' });
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message });
-        } finally {
-            setVerifyingWA(false);
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -213,70 +154,11 @@ export default function TeacherProfilePage() {
                                         value={formData.whatsapp_number}
                                         onChange={(e) => {
                                             setFormData({ ...formData, whatsapp_number: e.target.value });
-                                            setIsWaVerified(false);
                                         }}
-                                        disabled={isWaVerified}
                                         placeholder="Contoh: 08123456789"
-                                        className={`w-full pl-12 pr-4 py-3 rounded-xl border focus:outline-none transition-all font-medium ${isWaVerified ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-400 text-black dark:text-white'}`}
+                                        className={`w-full pl-12 pr-4 py-3 rounded-xl border focus:outline-none transition-all font-medium bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-400 text-black dark:text-white`}
                                     />
-                                    {isWaVerified && (
-                                        <CheckCircle2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                                    )}
                                 </div>
-
-                                {!isWaVerified && (
-                                    <div className="animate-in fade-in slide-in-from-top-2">
-                                        {waStep === 'input' ? (
-                                            <button
-                                                type="button"
-                                                onClick={handleSendWAOTP}
-                                                disabled={verifyingWA || !formData.whatsapp_number}
-                                                className="w-full py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl text-sm font-bold hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors flex items-center justify-center gap-2 border border-blue-100 dark:border-blue-800/50"
-                                            >
-                                                {verifyingWA ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
-                                                Verifikasi via WhatsApp
-                                            </button>
-                                        ) : (
-                                            <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800/50">
-                                                <p className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase">Masukkan OTP WhatsApp</p>
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        type="text"
-                                                        maxLength={6}
-                                                        value={waOTP}
-                                                        onChange={(e) => setWaOTP(e.target.value)}
-                                                        placeholder="6 Digit OTP"
-                                                        className="flex-1 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 text-center font-mono font-bold tracking-[0.5em] text-black dark:text-white"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleConfirmWAOTP}
-                                                        disabled={verifyingWA || waOTP.length < 6}
-                                                        className="px-6 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                                                    >
-                                                        {verifyingWA ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Selesai'}
-                                                    </button>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setWaStep('input')}
-                                                    className="text-[10px] text-blue-600 dark:text-blue-400 font-bold hover:underline"
-                                                >
-                                                    Ganti Nomor?
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {isWaVerified && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsWaVerified(false)}
-                                        className="text-[10px] text-slate-400 dark:text-slate-500 font-bold hover:text-blue-600 dark:hover:text-blue-400 transition-colors ml-1"
-                                    >
-                                        Ganti Nomor WhatsApp
-                                    </button>
-                                )}
                             </div>
                             <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-2 ml-1">Nomor ini akan digunakan sebagai satu-satunya cara jika Anda lupa password.</p>
                         </div>
