@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useMaintenance } from '../hooks/useMaintenance';
 import { useRouter, useSegments } from 'expo-router';
 import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { AuthProvider } from '../context/AuthContext';
 
 export default function RootLayout() {
@@ -11,6 +12,14 @@ export default function RootLayout() {
 
   // Listen for notification taps
   useEffect(() => {
+    // remote notifications are not supported in Expo Go (SDK 53+)
+    const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+    
+    if (isExpoGo) {
+      console.log('Push notifications are not supported in Expo Go. Use a development build for full functionality.');
+      return;
+    }
+
     const sub = Notifications.addNotificationResponseReceivedListener(() => {
       // When user taps notification, navigate to maintenance screen
     });
