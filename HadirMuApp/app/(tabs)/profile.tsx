@@ -94,17 +94,21 @@ export default function ProfileScreen() {
     if (!user) return;
     setUploadingAvatar(true);
     try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      
       const fileExt = uri.split('.').pop() || 'jpg';
       const fileName = `${user.id}_${Date.now()}.${fileExt}`;
       const filePath = `${user.role}s/${fileName}`;
 
+      const formData = new FormData();
+      formData.append('file', {
+        uri: uri,
+        name: fileName,
+        type: `image/${fileExt === 'png' ? 'png' : 'jpeg'}`,
+      } as any);
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, blob, {
-          contentType: `image/${fileExt === 'png' ? 'png' : 'jpeg'}`,
+        .upload(filePath, formData, {
+          cacheControl: '3600',
           upsert: true,
         });
 
@@ -129,7 +133,7 @@ export default function ProfileScreen() {
       Alert.alert('Sukses', 'Foto profil berhasil diperbarui!');
     } catch (error: any) {
       console.error('Upload error:', error);
-      Alert.alert('Error', 'Gagal mengunggah foto profil.');
+      Alert.alert('Error', `Gagal mengunggah foto profil: ${error.message || 'Unknown error'}`);
     } finally {
       setUploadingAvatar(false);
     }
