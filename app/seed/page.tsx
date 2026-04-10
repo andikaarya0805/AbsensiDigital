@@ -120,11 +120,11 @@ export default function SeedPage() {
         if (!nis) return;
 
         setLoading(true);
-        addLog(`🔄 Resetting device_id for NIS: ${nis}...`);
+        addLog(`🔄 Resetting device_id & web_device_id for NIS: ${nis}...`);
 
         const { data, error } = await supabase
             .from('students')
-            .update({ device_id: null })
+            .update({ device_id: null, web_device_id: null })
             .eq('nis', nis)
             .select();
 
@@ -133,7 +133,7 @@ export default function SeedPage() {
         } else if (!data || data.length === 0) {
             addLog(`⚠️ User with NIS ${nis} not found.`);
         } else {
-            addLog(`✅ SUCCESS! Device ID for ${data[0].full_name} has been cleared.`);
+            addLog(`✅ SUCCESS! Device ID (App + Web) for ${data[0].full_name} has been cleared.`);
         }
         setLoading(false);
     };

@@ -144,10 +144,10 @@ export default function StudentDashboard() {
         setStatus('scanning');
 
         try {
-            // SECURITY CHECK: Device Identity
+            // SECURITY CHECK: Web Device Identity (uses web_device_id for browser)
             const currentDeviceId = getDeviceId();
-            if (profile.device_id && profile.device_id !== currentDeviceId) {
-                throw new Error('Perangkat ini tidak terdaftar untuk akun Anda. Gunakan perangkat asli atau hubungi Admin.');
+            if (profile.web_device_id && profile.web_device_id !== currentDeviceId) {
+                throw new Error('Perangkat ini tidak terdaftar untuk akun Anda. Gunakan browser asli atau hubungi Admin.');
             }
 
             // QR Security Configuration (must be synced with teacher settings)

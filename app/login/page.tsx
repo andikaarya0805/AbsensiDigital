@@ -105,22 +105,24 @@ export default function LoginPage() {
                 }
 
                 // ==========================================
-                // DEVICE BINDING SECURITY
+                // DEVICE BINDING SECURITY (Web Version)
+                // Uses web_device_id column so web & mobile app
+                // can coexist on the same physical device.
                 // ==========================================
                 const currentDeviceId = getDeviceId();
-                if (!student.device_id) {
-                    // Initial binding on first login
+                if (!student.web_device_id) {
+                    // Initial binding on first web login
                     const { error: bindError } = await supabase
                         .from('students')
-                        .update({ device_id: currentDeviceId })
+                        .update({ web_device_id: currentDeviceId })
                         .eq('id', student.id);
 
                     if (bindError) {
-                        console.error('Device Binding Error:', bindError);
+                        console.error('Web Device Binding Error:', bindError);
                     }
-                } else if (student.device_id !== currentDeviceId) {
-                    // Block access if device doesn't match the registered record
-                    throw new Error('Akun ini sudah terhubung dengan perangkat lain. Hubungi Admin untuk mereset.');
+                } else if (student.web_device_id !== currentDeviceId) {
+                    // Block access if web device doesn't match
+                    throw new Error('Akun ini sudah terhubung dengan browser perangkat lain. Hubungi Admin untuk mereset.');
                 }
 
                 // Set Cookie for Middleware
