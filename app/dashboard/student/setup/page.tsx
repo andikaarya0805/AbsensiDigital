@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase';
-import { ShieldCheck, MessageCircle, Lock, ArrowRight, AlertCircle, CheckCircle2, User, Loader2 } from 'lucide-react';
+import { ShieldCheck, Lock, ArrowRight, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function SetupAccountPage() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [whatsappNumber, setWhatsappNumber] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -76,8 +75,7 @@ export default function SetupAccountPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     id: session.id,
-                    password: password,
-                    whatsapp_number: whatsappNumber
+                    password: password
                 })
             });
 
@@ -87,8 +85,6 @@ export default function SetupAccountPage() {
                 throw new Error(result.error || 'Gagal menyimpan data.');
             }
 
-            // Update local session
-            session.whatsapp_number = whatsappNumber;
             localStorage.setItem('student_session', JSON.stringify(session));
 
             setSuccess(true);
@@ -113,7 +109,7 @@ export default function SetupAccountPage() {
                             <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
                         </div>
                         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Akun Diamankan!</h2>
-                        <p className="text-slate-500 dark:text-slate-400 mt-2">Password baru dan nomor WhatsApp berhasil disimpan.</p>
+                        <p className="text-slate-500 dark:text-slate-400 mt-2">Password baru berhasil disimpan.</p>
                         <p className="text-green-600 dark:text-green-400 font-medium mt-4 text-sm">Mengalihkan ke dashboard...</p>
                     </div>
                 ) : (
@@ -174,29 +170,7 @@ export default function SetupAccountPage() {
                                 </div>
                             </div>
 
-                            <hr className="border-slate-100 dark:border-slate-800" />
 
-                            {/* WhatsApp Section */}
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Nomor WhatsApp (Aktif)</label>
-                                <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">Digunakan untuk reset password jika lupa.</p>
-                                <div className="space-y-4">
-                                    <div className="relative">
-                                        <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                                        <input
-                                            type="tel"
-                                            value={whatsappNumber}
-                                            onChange={(e) => {
-                                                setWhatsappNumber(e.target.value);
-                                            }}
-                                            placeholder="Contoh: 08123456789"
-                                            disabled={loading}
-                                            className={`w-full pl-12 pr-4 py-3.5 rounded-xl border focus:outline-none font-medium transition-all bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400 text-black dark:text-white`}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                            </div>
 
                             {error && (
                                 <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 border border-red-100 dark:border-red-800/50 animate-in fade-in slide-in-from-top-2">
