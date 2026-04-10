@@ -146,7 +146,7 @@ export default function StudentDashboard() {
         try {
             // SECURITY CHECK: Web Device Identity (uses web_device_id for browser)
             const currentDeviceId = getDeviceId();
-            if (profile.web_device_id && profile.web_device_id !== currentDeviceId) {
+            if (profile?.web_device_id && profile.web_device_id !== currentDeviceId) {
                 throw new Error('Perangkat ini tidak terdaftar untuk akun Anda. Gunakan browser asli atau hubungi Admin.');
             }
 
