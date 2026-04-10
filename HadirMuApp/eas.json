@@ -18,7 +18,7 @@
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://tpjodvljlgjeczmvksll.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_GcgZT-tpgMWlK89bDxq7cg_JH56oSmQ",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwam9kdmxqbGdqZWN6bXZrc2xsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NDgwNzUsImV4cCI6MjA4NTMyNDA3NX0.wlObzl-bFhnmEAGZQYVssQCizFBQr_O6PDb3fv5pNHE",
         "EXPO_PUBLIC_QR_SECRET": "HADIRMUPROD2026SECRET"
       }
     },

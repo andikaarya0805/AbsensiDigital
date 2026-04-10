@@ -58,11 +58,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const input = identifier.trim();
 
       // 1. Cek tabel Teachers
-      const { data: teacher } = await supabase
+      const { data: teacher, error: teacherErr } = await supabase
         .from('teachers')
         .select('*')
         .or(`email.eq.${input},nip.eq.${input}`)
         .maybeSingle();
+
+      if (teacherErr && teacherErr.code !== 'PGRST116') {
+        return { error: `DB Error: ${teacherErr.message}` };
+      }
 
       if (teacher) {
         if (teacher.password !== password) {
@@ -83,11 +87,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2. Cek tabel Students
-      const { data: student } = await supabase
+      const { data: student, error: studentErr } = await supabase
         .from('students')
         .select('*, classes(name)')
         .or(`recovery_email.eq.${input},nis.eq.${input}`)
         .maybeSingle();
+      
+      if (studentErr && studentErr.code !== 'PGRST116') {
+        return { error: `DB Error: ${studentErr.message}` };
+      }
 
       if (student) {
         if (student.password !== password && password !== '123456') {
