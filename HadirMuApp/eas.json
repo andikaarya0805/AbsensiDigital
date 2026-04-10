@@ -15,6 +15,11 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://tpjodvljlgjeczmvksll.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_GcgZT-tpgMWlK89bDxq7cg_JH56oSmQ",
+        "EXPO_PUBLIC_QR_SECRET": "HADIRMUPROD2026SECRET"
       }
     },
     "production": {
