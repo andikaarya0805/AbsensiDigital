@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ShieldCheck, Lock, ArrowRight, AlertCircle, MessageCircle, CheckCircle2, Loader2 } from 'lucide-react-native';
+import { ShieldCheck, Lock, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react-native';
 import { COLORS } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -15,7 +15,7 @@ export default function SetupScreen() {
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -45,10 +45,7 @@ export default function SetupScreen() {
       return;
     }
 
-    if (!whatsapp || whatsapp.length < 10) {
-      setError('Masukkan nomor WhatsApp yang valid.');
-      return;
-    }
+
 
     setLoading(true);
     setError('');
@@ -58,7 +55,6 @@ export default function SetupScreen() {
         .from('students')
         .update({
           password: password,
-          whatsapp_number: whatsapp,
         })
         .eq('id', user?.id);
 
@@ -80,7 +76,7 @@ export default function SetupScreen() {
       <View style={styles.successContainer}>
         <CheckCircle2 size={80} color={COLORS.primary} />
         <Text style={styles.successTitle}>Akun Diamankan!</Text>
-        <Text style={styles.successSubtitle}>Password baru dan nomor WhatsApp berhasil disimpan.</Text>
+        <Text style={styles.successSubtitle}>Password baru berhasil disimpan.</Text>
       </View>
     );
   }
@@ -140,20 +136,7 @@ export default function SetupScreen() {
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nomor WhatsApp (Aktif)</Text>
-            <View style={styles.inputWrapper}>
-              <MessageCircle size={20} color={COLORS.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Contoh: 08123456789"
-                placeholderTextColor={COLORS.textSub}
-                value={whatsapp}
-                onChangeText={setWhatsapp}
-                keyboardType="phone-pad"
-              />
-            </View>
-          </View>
+
 
           {error ? (
             <View style={styles.errorBox}>
