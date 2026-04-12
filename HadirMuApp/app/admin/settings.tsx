@@ -29,11 +29,11 @@ export default function AdminSettingsScreen() {
             const response = await fetch(`${API_URL}/api/admin/settings`);
             const result = await response.json();
             
-            if (response.ok && result.data) {
+            if (response.ok && result) {
                 setFormData({
-                    latitude: result.data.school_latitude.toString(),
-                    longitude: result.data.school_longitude.toString(),
-                    radius: result.data.geofence_radius.toString()
+                    latitude: (result.latitude || '').toString(),
+                    longitude: (result.longitude || '').toString(),
+                    radius: (result.radius_meters || '').toString()
                 });
             }
         } catch (error: any) {
@@ -81,9 +81,9 @@ export default function AdminSettingsScreen() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    schoolLatitude: parseFloat(latitude),
-                    schoolLongitude: parseFloat(longitude),
-                    geofenceRadius: parseInt(radius)
+                    latitude: parseFloat(latitude),
+                    longitude: parseFloat(longitude),
+                    radius_meters: parseInt(radius)
                 })
             });
 

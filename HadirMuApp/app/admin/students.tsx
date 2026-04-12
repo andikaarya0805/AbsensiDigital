@@ -3,13 +3,13 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Activi
 import { COLORS, RADIUS, SHADOW } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { 
-  Plus, Search, MoreVertical, Edit2, Trash2, 
-  GraduationCap, ChevronLeft, X, Save, 
-  Mail, BookOpen, Key, Loader2, Hash, Filter
+  Mail, BookOpen, Key, Loader2, Hash, Filter,
+  RotateCcw, Smartphone
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 export default function AdminStudentsScreen() {
+    const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     const router = useRouter();
     const [students, setStudents] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
@@ -122,6 +122,46 @@ export default function AdminStudentsScreen() {
             ]
         );
     };
+    
+    const handleResetAction = async (student: any, action: 'reset_password' | 'reset_device_id') => {
+        const actionTitle = action === 'reset_password' ? 'Reset Password' : 'Reset Device ID';
+        const actionMsg = action === 'reset_password' 
+            ? `Yakin ingin mereset password ${student.full_name} ke "123456"?`
+            : `Yakin ingin menghapus Device ID ${student.full_name}? Ini akan membuat siswa bisa login di HP baru.`;
+
+        Alert.alert(
+            actionTitle,
+            actionMsg,
+            [
+                { text: 'Batal', style: 'cancel' },
+                { 
+                    text: 'Reset', 
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const response = await fetch(`${API_URL}/api/admin/users/reset`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    userId: student.id,
+                                    type: 'student',
+                                    action: action
+                                })
+                            });
+
+                            const result = await response.json();
+                            if (!response.ok) throw new Error(result.error || 'Gagal melakukan reset');
+
+                            Alert.alert('Sukses', result.message);
+                            fetchData();
+                        } catch (error: any) {
+                            Alert.alert('Error', error.message);
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const openModal = (student: any = null) => {
         if (student) {
@@ -222,6 +262,12 @@ export default function AdminStudentsScreen() {
                                     </View>
                                 </View>
                                 <View style={styles.actionRow}>
+                                    <TouchableOpacity style={styles.iconAction} onPress={() => handleResetAction(student, 'reset_password')} title="Reset Password">
+                                        <Key size={16} color={COLORS.warning} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.iconAction} onPress={() => handleResetAction(student, 'reset_device_id')} title="Reset Device ID">
+                                        <Smartphone size={16} color={COLORS.primary} />
+                                    </TouchableOpacity>
                                     <TouchableOpacity style={styles.iconAction} onPress={() => openModal(student)}>
                                         <Edit2 size={16} color={COLORS.primary} />
                                     </TouchableOpacity>

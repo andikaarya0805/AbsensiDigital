@@ -44,7 +44,8 @@ export default function BroadcastScreen() {
                             Alert.alert('Sukses', `Berhasil mengirim pesan ke ${result.successCount} pengguna.`);
                             setMessage('');
                         } catch (error: any) {
-                            Alert.alert('Error', error.message);
+                            console.error('Broadcast Network Error:', error);
+                            Alert.alert('Gagal Terhubung', `Tidak dapat menghubungi server. Cek koneksi internet.\n\nDetail: ${error.message}\nURL: ${API_URL}`);
                         } finally {
                             setIsSending(false);
                         }
