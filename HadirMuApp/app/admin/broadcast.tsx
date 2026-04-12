@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { COLORS, RADIUS, SHADOW } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { ChevronLeft, Send, Megaphone, AlertCircle, Info } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://absensi-digital-i87xnkg8j-andikaarya0805s-projects.vercel.app';
 
 export default function BroadcastScreen() {
+    const { colors } = useTheme();
+    const styles = createStyles(colors);
     const router = useRouter();
     const [message, setMessage] = useState('');
     const [target, setTarget] = useState<'all' | 'students' | 'teachers'>('all');
@@ -59,14 +61,14 @@ export default function BroadcastScreen() {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft size={24} color={COLORS.text} />
+                    <ChevronLeft size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>Broadcast Telegram</Text>
                     <Text style={styles.headerSub}>Kirim pengumuman massal</Text>
                 </View>
                 <View style={styles.iconBox}>
-                    <Megaphone size={24} color={COLORS.primary} />
+                    <Megaphone size={24} color={colors.primary} />
                 </View>
             </View>
 
@@ -97,7 +99,7 @@ export default function BroadcastScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Tulis pengumuman di sini..."
-                            placeholderTextColor={COLORS.textSub}
+                            placeholderTextColor={colors.textSub}
                             multiline
                             numberOfLines={10}
                             textAlignVertical="top"
@@ -106,7 +108,7 @@ export default function BroadcastScreen() {
                         />
 
                         <View style={styles.infoBox}>
-                            <Info size={18} color={COLORS.primary} />
+                            <Info size={18} color={colors.primary} />
                             <Text style={styles.infoText}>
                                 Gunakan fitur ini dengan bijak. Pesan akan langsung muncul di bot Telegram siswa dan guru.
                             </Text>
@@ -129,7 +131,7 @@ export default function BroadcastScreen() {
                     </TouchableOpacity>
 
                     <View style={styles.warningBox}>
-                        <AlertCircle size={18} color={COLORS.danger} />
+                        <AlertCircle size={18} color={colors.danger} />
                         <Text style={styles.warningText}>
                             Tindakan ini tidak dapat dibatalkan setelah tombol kirim ditekan.
                         </Text>
@@ -140,44 +142,44 @@ export default function BroadcastScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.bg,
+        backgroundColor: colors.bg,
     },
     header: {
         paddingTop: 60,
         paddingHorizontal: 24,
         paddingBottom: 20,
-        backgroundColor: COLORS.card,
+        backgroundColor: colors.card,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 16,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
+        borderBottomColor: colors.border,
     },
     backBtn: {
         width: 40,
         height: 40,
-        borderRadius: RADIUS.lg,
-        backgroundColor: COLORS.bg,
+        borderRadius: 12,
+        backgroundColor: colors.bg,
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerTitle: {
         fontSize: 18,
         fontWeight: '900',
-        color: COLORS.text,
+        color: colors.text,
     },
     headerSub: {
         fontSize: 12,
-        color: COLORS.textSub,
+        color: colors.textSub,
     },
     iconBox: {
         width: 44,
         height: 44,
-        borderRadius: RADIUS.lg,
-        backgroundColor: COLORS.primary + '15',
+        borderRadius: 12,
+        backgroundColor: colors.primary + '15',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -186,55 +188,63 @@ const styles = StyleSheet.create({
         gap: 20,
     },
     card: {
-        backgroundColor: COLORS.card,
-        borderRadius: RADIUS.xl,
+        backgroundColor: colors.card,
+        borderRadius: 24,
         padding: 20,
         borderWidth: 1,
-        borderColor: COLORS.border,
-        ...SHADOW.sm,
+        borderColor: colors.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 1,
     },
     label: {
         fontSize: 10,
         fontWeight: '900',
-        color: COLORS.text,
+        color: colors.text,
         letterSpacing: 1,
         marginBottom: 12,
     },
     input: {
-        backgroundColor: COLORS.bg,
-        borderRadius: RADIUS.lg,
+        backgroundColor: colors.bg,
+        borderRadius: 16,
         padding: 16,
         fontSize: 14,
-        color: COLORS.text,
+        color: colors.text,
         fontWeight: '600',
         minHeight: 200,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
     },
     infoBox: {
         flexDirection: 'row',
         gap: 12,
         marginTop: 16,
         padding: 12,
-        backgroundColor: COLORS.primary + '08',
-        borderRadius: RADIUS.md,
+        backgroundColor: colors.primary + '08',
+        borderRadius: 12,
     },
     infoText: {
         flex: 1,
         fontSize: 12,
-        color: COLORS.textSub,
+        color: colors.textSub,
         fontWeight: '600',
         lineHeight: 18,
     },
     sendBtn: {
         height: 56,
-        backgroundColor: COLORS.primary,
-        borderRadius: RADIUS.xl,
+        backgroundColor: colors.primary,
+        borderRadius: 16,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
         gap: 10,
-        ...SHADOW.primary,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
     sendText: {
         fontSize: 16,
@@ -251,7 +261,7 @@ const styles = StyleSheet.create({
     warningText: {
         flex: 1,
         fontSize: 11,
-        color: COLORS.danger,
+        color: colors.danger,
         fontWeight: '700',
     },
     targetRow: {
@@ -261,24 +271,24 @@ const styles = StyleSheet.create({
     targetBtn: {
         flex: 1,
         paddingVertical: 12,
-        borderRadius: RADIUS.lg,
-        backgroundColor: COLORS.bg,
+        borderRadius: 12,
+        backgroundColor: colors.bg,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
         justifyContent: 'center',
         alignItems: 'center',
     },
     targetBtnActive: {
-        backgroundColor: COLORS.primary,
-        borderColor: COLORS.primary,
-        ...SHADOW.primary,
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
     },
     targetText: {
         fontSize: 13,
         fontWeight: '800',
-        color: COLORS.textSub,
+        color: colors.textSub,
     },
     targetTextActive: {
         color: '#fff',
     }
 });
+

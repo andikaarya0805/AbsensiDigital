@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
-import { RADIUS, SHADOW } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -213,7 +212,7 @@ export default function AdminStudentsScreen() {
 
             {/* Toolbar (Search & Filter) */}
             <View style={styles.toolbar}>
-                <View style={[styles.searchBox, SHADOW.sm]}>
+                <View style={styles.searchBox}>
                     <Search size={16} color={colors.textSub} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
@@ -314,7 +313,7 @@ export default function AdminStudentsScreen() {
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Contoh: Andi Wijaya"
-                                    placeholderTextColor={colors.border}
+                                    placeholderTextColor={colors.textSub}
                                     value={formData.full_name}
                                     onChangeText={(text) => setFormData({...formData, full_name: text})}
                                 />
@@ -326,7 +325,7 @@ export default function AdminStudentsScreen() {
                                     <TextInput
                                         style={styles.input}
                                         placeholder="12..."
-                                        placeholderTextColor={colors.border}
+                                        placeholderTextColor={colors.textSub}
                                         value={formData.nis}
                                         onChangeText={(text) => setFormData({...formData, nis: text})}
                                     />
@@ -359,7 +358,7 @@ export default function AdminStudentsScreen() {
                                 <TextInput
                                     style={styles.input}
                                     placeholder="******"
-                                    placeholderTextColor={colors.border}
+                                    placeholderTextColor={colors.textSub}
                                     secureTextEntry
                                     value={formData.password}
                                     onChangeText={(text) => setFormData({...formData, password: text})}
@@ -409,7 +408,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backBtn: {
         width: 40,
         height: 40,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         backgroundColor: colors.bg,
         justifyContent: 'center',
         alignItems: 'center',
@@ -426,11 +425,15 @@ const createStyles = (colors: any) => StyleSheet.create({
     addBtn: {
         width: 44,
         height: 44,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        ...SHADOW.primary,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
     toolbar: {
         padding: 24,
@@ -438,13 +441,18 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     searchBox: {
         backgroundColor: colors.card,
-        borderRadius: RADIUS.xl,
+        borderRadius: 24,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
         borderWidth: 1,
         borderColor: colors.border,
         marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 1,
     },
     searchIcon: {
         marginRight: 10,
@@ -468,7 +476,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     classTab: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: RADIUS.full,
+        borderRadius: 20,
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.border,
@@ -491,12 +499,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     studentCard: {
         backgroundColor: colors.card,
-        borderRadius: RADIUS.xl,
+        borderRadius: 24,
         padding: 16,
         marginBottom: 16,
         borderWidth: 1,
         borderColor: colors.border,
-        ...SHADOW.sm,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 1,
     },
     cardMain: {
         flexDirection: 'row',
@@ -506,7 +518,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     avatarBox: {
         width: 48,
         height: 48,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         backgroundColor: colors.success + '10',
         justifyContent: 'center',
         alignItems: 'center',
@@ -545,7 +557,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     iconAction: {
         width: 32,
         height: 32,
-        borderRadius: RADIUS.md,
+        borderRadius: 8,
         backgroundColor: colors.bg,
         justifyContent: 'center',
         alignItems: 'center',
@@ -583,8 +595,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     modalContent: {
         backgroundColor: colors.bg,
-        borderTopLeftRadius: RADIUS.xl,
-        borderTopRightRadius: RADIUS.xl,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         maxHeight: '90%',
     },
     modalHeader: {
@@ -633,7 +645,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.border,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 12,
         fontSize: 14,
@@ -648,7 +660,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.border,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         marginTop: 4,
     },
     pickerItem: {
@@ -668,11 +680,12 @@ const createStyles = (colors: any) => StyleSheet.create({
         backgroundColor: colors.card,
         borderTopWidth: 1,
         borderTopColor: colors.border,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     },
     cancelBtn: {
         flex: 1,
         height: 54,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         borderWidth: 1,
         borderColor: colors.border,
         justifyContent: 'center',
@@ -687,12 +700,16 @@ const createStyles = (colors: any) => StyleSheet.create({
         flex: 2,
         height: 54,
         backgroundColor: colors.primary,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
         gap: 10,
-        ...SHADOW.primary,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
     saveText: {
         fontSize: 15,
@@ -700,3 +717,4 @@ const createStyles = (colors: any) => StyleSheet.create({
         color: '#fff',
     },
 });
+

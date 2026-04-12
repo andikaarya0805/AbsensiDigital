@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
-import { RADIUS, SHADOW } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -199,7 +198,7 @@ export default function AdminTeachersScreen() {
             </View>
 
             {/* Search Bar */}
-            <View style={[styles.searchContainer, SHADOW.sm]}>
+            <View style={styles.searchContainer}>
                 <Search size={18} color={colors.textSub} style={styles.searchIcon} />
                 <TextInput
                     style={styles.searchInput}
@@ -284,7 +283,7 @@ export default function AdminTeachersScreen() {
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Contoh: Budi Santoso, S.Pd."
-                                    placeholderTextColor={colors.border}
+                                    placeholderTextColor={colors.textSub}
                                     value={formData.full_name}
                                     onChangeText={(text) => setFormData({...formData, full_name: text})}
                                 />
@@ -296,7 +295,7 @@ export default function AdminTeachersScreen() {
                                     <TextInput
                                         style={styles.input}
                                         placeholder="email@sekolah.sch.id"
-                                        placeholderTextColor={colors.border}
+                                        placeholderTextColor={colors.textSub}
                                         keyboardType="email-address"
                                         autoCapitalize="none"
                                         value={formData.email}
@@ -308,7 +307,7 @@ export default function AdminTeachersScreen() {
                                     <TextInput
                                         style={styles.input}
                                         placeholder="1987... (Opsional)"
-                                        placeholderTextColor={colors.border}
+                                        placeholderTextColor={colors.textSub}
                                         value={formData.nip}
                                         onChangeText={(text) => setFormData({...formData, nip: text})}
                                     />
@@ -320,7 +319,7 @@ export default function AdminTeachersScreen() {
                                 <TextInput
                                     style={styles.input}
                                     placeholder="******"
-                                    placeholderTextColor={colors.border}
+                                    placeholderTextColor={colors.textSub}
                                     secureTextEntry
                                     value={formData.password}
                                     onChangeText={(text) => setFormData({...formData, password: text})}
@@ -387,7 +386,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backBtn: {
         width: 40,
         height: 40,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         backgroundColor: colors.bg,
         justifyContent: 'center',
         alignItems: 'center',
@@ -404,22 +403,31 @@ const createStyles = (colors: any) => StyleSheet.create({
     addBtn: {
         width: 44,
         height: 44,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        ...SHADOW.primary,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
     searchContainer: {
         margin: 24,
         marginBottom: 8,
         backgroundColor: colors.card,
-        borderRadius: RADIUS.xl,
+        borderRadius: 24,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
         borderWidth: 1,
         borderColor: colors.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 1,
     },
     searchIcon: {
         marginRight: 10,
@@ -437,12 +445,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     teacherCard: {
         backgroundColor: colors.card,
-        borderRadius: RADIUS.xl,
+        borderRadius: 24,
         padding: 16,
         marginBottom: 16,
         borderWidth: 1,
         borderColor: colors.border,
-        ...SHADOW.sm,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 1,
     },
     cardMain: {
         flexDirection: 'row',
@@ -452,7 +464,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     avatarBox: {
         width: 48,
         height: 48,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         backgroundColor: colors.primary + '10',
         justifyContent: 'center',
         alignItems: 'center',
@@ -475,7 +487,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     iconAction: {
         width: 32,
         height: 32,
-        borderRadius: RADIUS.md,
+        borderRadius: 8,
         backgroundColor: colors.bg,
         justifyContent: 'center',
         alignItems: 'center',
@@ -507,7 +519,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         gap: 4,
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: RADIUS.full,
+        borderRadius: 20,
     },
     roleText: {
         fontSize: 9,
@@ -530,8 +542,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     modalContent: {
         backgroundColor: colors.bg,
-        borderTopLeftRadius: RADIUS.xl,
-        borderTopRightRadius: RADIUS.xl,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         maxHeight: '90%',
     },
     modalHeader: {
@@ -580,7 +592,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.border,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 12,
         fontSize: 14,
@@ -594,7 +606,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     roleOption: {
         flex: 1,
         height: 50,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         borderWidth: 1,
         borderColor: colors.border,
         backgroundColor: colors.card,
@@ -620,11 +632,12 @@ const createStyles = (colors: any) => StyleSheet.create({
         backgroundColor: colors.card,
         borderTopWidth: 1,
         borderTopColor: colors.border,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     },
     cancelBtn: {
         flex: 1,
         height: 54,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         borderWidth: 1,
         borderColor: colors.border,
         justifyContent: 'center',
@@ -639,12 +652,16 @@ const createStyles = (colors: any) => StyleSheet.create({
         flex: 2,
         height: 54,
         backgroundColor: colors.primary,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
         gap: 10,
-        ...SHADOW.primary,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
     saveText: {
         fontSize: 15,
@@ -652,3 +669,4 @@ const createStyles = (colors: any) => StyleSheet.create({
         color: '#fff',
     },
 });
+

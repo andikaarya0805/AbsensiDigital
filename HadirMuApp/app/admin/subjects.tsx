@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
-import { COLORS, RADIUS, SHADOW } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { 
   Plus, Search, Edit2, Trash2, 
@@ -10,6 +10,8 @@ import {
 import { useRouter } from 'expo-router';
 
 export default function AdminSubjectsScreen() {
+    const { colors } = useTheme();
+    const styles = createStyles(colors);
     const router = useRouter();
     const [subjects, setSubjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -122,7 +124,7 @@ export default function AdminSubjectsScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft size={24} color={COLORS.text} />
+                    <ChevronLeft size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>Mata Pelajaran</Text>
@@ -135,12 +137,12 @@ export default function AdminSubjectsScreen() {
 
             {/* Toolbar */}
             <View style={styles.toolbar}>
-                <View style={[styles.searchBox, SHADOW.sm]}>
-                    <Search size={16} color={COLORS.textSub} style={styles.searchIcon} />
+                <View style={styles.searchBox}>
+                    <Search size={16} color={colors.textSub} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Cari mata pelajaran..."
-                        placeholderTextColor={COLORS.textSub}
+                        placeholderTextColor={colors.textSub}
                         value={searchTerm}
                         onChangeText={setSearchTerm}
                     />
@@ -149,22 +151,22 @@ export default function AdminSubjectsScreen() {
 
             <ScrollView contentContainerStyle={styles.listContent}>
                 {loading ? (
-                    <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
                 ) : filteredSubjects.length > 0 ? (
                     <View style={styles.gridContainer}>
                         {filteredSubjects.map((subj) => (
                             <View key={subj.id} style={styles.subjectCard}>
                                 <View style={styles.iconBox}>
-                                    <Book size={20} color={COLORS.info} />
+                                    <Book size={20} color={colors.info} />
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.subjectName} numberOfLines={2}>{subj.name}</Text>
                                     <View style={styles.actionRow}>
                                         <TouchableOpacity onPress={() => openModal(subj)} style={styles.miniAction}>
-                                            <Edit2 size={12} color={COLORS.primary} />
+                                            <Edit2 size={12} color={colors.primary} />
                                         </TouchableOpacity>
                                         <TouchableOpacity onPress={() => handleDelete(subj)} style={styles.miniAction}>
-                                            <Trash2 size={12} color={COLORS.danger} />
+                                            <Trash2 size={12} color={colors.danger} />
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -173,7 +175,7 @@ export default function AdminSubjectsScreen() {
                     </View>
                 ) : (
                     <View style={styles.emptyContainer}>
-                        <FileText size={48} color={COLORS.border} />
+                        <FileText size={48} color={colors.border} />
                         <Text style={styles.emptyText}>Tidak ada mata pelajaran</Text>
                     </View>
                 )}
@@ -192,7 +194,7 @@ export default function AdminSubjectsScreen() {
                                 <Text style={styles.modalSubHeader}>Manajemen Kurikulum</Text>
                             </View>
                             <TouchableOpacity onPress={() => setShowModal(false)} style={styles.closeBtn}>
-                                <X size={24} color={COLORS.textSub} />
+                                <X size={24} color={colors.textSub} />
                             </TouchableOpacity>
                         </View>
 
@@ -202,7 +204,7 @@ export default function AdminSubjectsScreen() {
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Contoh: Matematika"
-                                    placeholderTextColor={COLORS.border}
+                                    placeholderTextColor={colors.textSub}
                                     value={formData.name}
                                     onChangeText={(text) => setFormData({...formData, name: text})}
                                     autoFocus
@@ -232,60 +234,69 @@ export default function AdminSubjectsScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.bg,
+        backgroundColor: colors.bg,
     },
     header: {
         paddingTop: 60,
         paddingHorizontal: 24,
         paddingBottom: 20,
-        backgroundColor: COLORS.card,
+        backgroundColor: colors.card,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 16,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
+        borderBottomColor: colors.border,
     },
     backBtn: {
         width: 40,
         height: 40,
-        borderRadius: RADIUS.lg,
-        backgroundColor: COLORS.bg,
+        borderRadius: 12,
+        backgroundColor: colors.bg,
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerTitle: {
         fontSize: 18,
         fontWeight: '900',
-        color: COLORS.text,
+        color: colors.text,
     },
     headerSub: {
         fontSize: 12,
-        color: COLORS.textSub,
+        color: colors.textSub,
     },
     addBtn: {
         width: 44,
         height: 44,
-        borderRadius: RADIUS.lg,
-        backgroundColor: COLORS.primary,
+        borderRadius: 12,
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        ...SHADOW.primary,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
     toolbar: {
         padding: 24,
         paddingBottom: 8,
     },
     searchBox: {
-        backgroundColor: COLORS.card,
-        borderRadius: RADIUS.xl,
+        backgroundColor: colors.card,
+        borderRadius: 24,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 1,
     },
     searchIcon: {
         marginRight: 10,
@@ -294,7 +305,7 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 50,
         fontSize: 14,
-        color: COLORS.text,
+        color: colors.text,
         fontWeight: '600',
     },
     listContent: {
@@ -308,18 +319,22 @@ const styles = StyleSheet.create({
     },
     subjectCard: {
         width: '48.2%',
-        backgroundColor: COLORS.card,
-        borderRadius: RADIUS.xl,
+        backgroundColor: colors.card,
+        borderRadius: 24,
         padding: 16,
         borderWidth: 1,
-        borderColor: COLORS.border,
-        ...SHADOW.sm,
+        borderColor: colors.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 1,
     },
     iconBox: {
         width: 36,
         height: 36,
-        borderRadius: RADIUS.md,
-        backgroundColor: COLORS.info + '10',
+        borderRadius: 8,
+        backgroundColor: colors.info + '10',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 12,
@@ -327,7 +342,7 @@ const styles = StyleSheet.create({
     subjectName: {
         fontSize: 14,
         fontWeight: '900',
-        color: COLORS.text,
+        color: colors.text,
         height: 40,
     },
     actionRow: {
@@ -339,12 +354,12 @@ const styles = StyleSheet.create({
     miniAction: {
         width: 28,
         height: 28,
-        borderRadius: RADIUS.sm,
-        backgroundColor: COLORS.bg,
+        borderRadius: 4,
+        backgroundColor: colors.bg,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
     },
     emptyContainer: {
         alignItems: 'center',
@@ -353,7 +368,7 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         marginTop: 12,
-        color: COLORS.textSub,
+        color: colors.textSub,
         fontWeight: '700',
     },
     modalOverlay: {
@@ -362,9 +377,9 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: COLORS.bg,
-        borderTopLeftRadius: RADIUS.xl,
-        borderTopRightRadius: RADIUS.xl,
+        backgroundColor: colors.bg,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
     },
     modalHeader: {
         padding: 24,
@@ -372,18 +387,18 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
-        backgroundColor: COLORS.card,
+        borderBottomColor: colors.border,
+        backgroundColor: colors.card,
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: '900',
-        color: COLORS.text,
+        color: colors.text,
     },
     modalSubHeader: {
         fontSize: 11,
         fontWeight: '800',
-        color: COLORS.textSub,
+        color: colors.textSub,
         textTransform: 'uppercase',
         letterSpacing: 1,
         marginTop: 2,
@@ -400,54 +415,58 @@ const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 10,
         fontWeight: '900',
-        color: COLORS.text,
+        color: colors.text,
         marginBottom: 8,
         letterSpacing: 1,
     },
     input: {
-        backgroundColor: COLORS.card,
+        backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: RADIUS.lg,
+        borderColor: colors.border,
+        borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 12,
         fontSize: 14,
         fontWeight: '700',
-        color: COLORS.text,
+        color: colors.text,
     },
     modalFooter: {
         padding: 24,
         flexDirection: 'row',
         gap: 12,
-        backgroundColor: COLORS.card,
+        backgroundColor: colors.card,
         borderTopWidth: 1,
-        borderTopColor: COLORS.border,
+        borderTopColor: colors.border,
         paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     },
     cancelBtn: {
         flex: 1,
         height: 54,
-        borderRadius: RADIUS.lg,
+        borderRadius: 12,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
         justifyContent: 'center',
         alignItems: 'center',
     },
     cancelText: {
         fontSize: 15,
         fontWeight: '800',
-        color: COLORS.textSub,
+        color: colors.textSub,
     },
     saveBtn: {
         flex: 2,
         height: 54,
-        backgroundColor: COLORS.primary,
-        borderRadius: RADIUS.lg,
+        backgroundColor: colors.primary,
+        borderRadius: 12,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
         gap: 10,
-        ...SHADOW.primary,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
     saveText: {
         fontSize: 15,
@@ -455,3 +474,4 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
 });
+

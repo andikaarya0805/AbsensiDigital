@@ -1,9 +1,9 @@
 
 --- STUDENTS TABLE ---
-Columns: ["id","full_name","nis","role","device_id","created_at","first_login","class","recovery_email","reset_token","reset_token_expiry","password","telegram_chat_id","telegram_username","avatar_url","verification_token","whatsapp_number","class_id"]
+Columns: ["id","full_name","nis","role","device_id","created_at","first_login","class","password","telegram_chat_id","telegram_username","avatar_url","class_id","web_device_id","reset_token","reset_token_expiry"]
 
 --- TEACHERS TABLE ---
-Columns: ["id","nip","full_name","email","phone","subject","device_id","created_at","reset_token","reset_token_expiry","whatsapp_number","password","role"]
+Columns: ["id","nip","full_name","email","subject","device_id","created_at","password","role","telegram_chat_id","telegram_username","verification_token","reset_token","reset_token_expiry"]
 
 --- ATTENDANCE TABLE ---
 Columns: ["id","student_id","status","class_id","timestamp","status_type","session_name"]
