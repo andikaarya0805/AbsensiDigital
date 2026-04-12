@@ -1,0 +1,11 @@
+﻿{
+  "success": false,
+  "error": {
+    "message": "Invalid API key",
+    "hint": "Double check the provided API key for typos. This API key might also be owned by another Supabase project."
+  },
+  "data": null,
+  "count": null,
+  "status": 401,
+  "statusText": "Unauthorized"
+}

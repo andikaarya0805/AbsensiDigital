@@ -30,7 +30,7 @@ const getStatusOptions = (colors: any) => [
   { value: 'alpha', label: 'ALPHA', color: colors.danger },
 ];
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://absensi-digital-i87xnkg8j-andikaarya0805s-projects.vercel.app';
 
 export default function HomeScreen() {
   const { colors, theme, setTheme, isDark } = useTheme();

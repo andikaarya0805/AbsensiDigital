@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 export default function AdminTeachersScreen() {
     const { colors } = useTheme();
     const styles = createStyles(colors);
-    const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+    const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://absensi-digital-i87xnkg8j-andikaarya0805s-projects.vercel.app';
     const router = useRouter();
     const [teachers, setTeachers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);

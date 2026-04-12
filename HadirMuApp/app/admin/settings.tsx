@@ -5,7 +5,7 @@ import { ChevronLeft, MapPin, Save, Map, Crosshair, HelpCircle, Loader2 } from '
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://absensi-digital-i87xnkg8j-andikaarya0805s-projects.vercel.app';
 
 export default function AdminSettingsScreen() {
     const router = useRouter();

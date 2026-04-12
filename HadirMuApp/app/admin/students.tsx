@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 export default function AdminStudentsScreen() {
     const { colors } = useTheme();
     const styles = createStyles(colors);
-    const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+    const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://absensi-digital-i87xnkg8j-andikaarya0805s-projects.vercel.app';
     const router = useRouter();
     const [students, setStudents] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);

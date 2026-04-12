@@ -1,0 +1,22 @@
+﻿env: load .env
+env: export EXPO_PUBLIC_QR_SECRET EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_SUPABASE_URL
+Running 17 checks on your project...
+15/17 checks passed. 2 checks failed. Possible issues detected:
+Use the --verbose flag to see more details about passed checks.
+
+Ô£û Check Expo config (app.json/ app.config.js) schema
+Error validating fields in D:\dika\tugas\AbsensiDigital\HadirMuApp\app.json:
+ Field: android - should NOT have additional property 'edgeToEdgeEnabled'.
+Advice:
+Resolve schema errors in your app config. Learn more: https://docs.expo.dev/workflow/configuration/
+
+Ô£û Check that packages match versions required by installed Expo SDK
+The following packages should be updated for best compatibility with the installed expo version:
+  react-native@0.76.3 - expected version: 0.76.9
+  react-native-screens@4.0.0 - expected version: ~4.4.0
+Your project may not work correctly until you install the expected versions of the packages.
+Found outdated dependencies
+Advice:
+Use 'npx expo install --check' to review and upgrade your dependencies.
+To ignore specific packages, add them to "expo.install.exclude" in package.json. Learn more: https://expo.fyi/dependency-validation
+
