@@ -22,7 +22,8 @@ import {
     Sun,
     AlertTriangle,
     Megaphone,
-    MapPin
+    MapPin,
+    CheckCircle2
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { useTheme } from '@/components/ThemeProvider';
