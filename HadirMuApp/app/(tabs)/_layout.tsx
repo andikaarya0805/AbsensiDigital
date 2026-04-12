@@ -5,8 +5,10 @@ import { COLORS } from '../../constants/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { useMaintenance } from '../../hooks/useMaintenance';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function TabLayout() {
+  const { colors } = useTheme();
   const { user, loading } = useAuth();
   const { isMaintenance } = useMaintenance();
   const insets = useSafeAreaInsets();
@@ -27,19 +29,19 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textSub,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSub,
         tabBarStyle: {
-          backgroundColor: COLORS.card,
-          borderTopColor: COLORS.border,
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
           height: 65 + (insets.bottom > 0 ? insets.bottom - 10 : 0),
           paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
           paddingTop: 10,
         },
         headerStyle: {
-          backgroundColor: COLORS.bg,
+          backgroundColor: colors.bg,
         },
-        headerTintColor: '#fff',
+        headerTintColor: colors.text,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',

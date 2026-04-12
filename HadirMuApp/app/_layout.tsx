@@ -6,6 +6,7 @@ import { useRouter, useSegments } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { AuthProvider } from '../context/AuthContext';
+import { ThemeProvider, useTheme } from '../context/ThemeContext';
 
 export default function RootLayout() {
   const router = useRouter();
@@ -27,14 +28,26 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <AuthProvider>
-      <StatusBar style="light" backgroundColor="#0f172a" />
+    <ThemeProvider>
+      <AuthProvider>
+        <RootContent />
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
+
+function RootContent() {
+  const { colors, isDark } = useTheme();
+
+  return (
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} backgroundColor={colors.bg} />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#0f172a' },
-          headerTintColor: '#f1f5f9',
+          headerStyle: { backgroundColor: colors.bg },
+          headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: 'bold' },
-          contentStyle: { backgroundColor: '#0f172a' },
+          contentStyle: { backgroundColor: colors.bg },
           animation: 'slide_from_right',
         }}
       >
@@ -46,6 +59,6 @@ export default function RootLayout() {
         <Stack.Screen name="recap" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
-    </AuthProvider>
+    </>
   );
 }

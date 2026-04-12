@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Alert, Linking, ActivityIndicator, TextInput } from 'react-native';
-import { COLORS, RADIUS, SHADOW } from '../../constants/theme';
+import { RADIUS, SHADOW } from '../../constants/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { 
   LogOut, ChevronRight, HardDrive, Send, 
-  User, Camera, Lock, Save
+  User, Camera, Lock, Save, Moon, Sun
 } from 'lucide-react-native';
+import { useTheme } from '../../context/ThemeContext';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function ProfileScreen() {
+  const { colors, theme, setTheme, toggleTheme, isDark } = useTheme();
   const router = useRouter();
   const { user, logout } = useAuth();
   const [profile, setProfile] = useState<any>(null);
@@ -177,11 +179,12 @@ export default function ProfileScreen() {
     await supabase.from(user?.role === 'student' ? 'students' : 'teachers').update({ verification_token: token }).eq('id', user?.id);
     Linking.openURL(`https://t.me/HadirMu_Bot?start=v_${token}`);
   };
+  const styles = createStyles(colors);
 
-  if (loading) {
+  if (loading || !profile) {
     return (
-      <View style={[styles.container, { justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+      <View style={[styles.container, { backgroundColor: colors.bg, justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -190,42 +193,42 @@ export default function ProfileScreen() {
   const identityValue = profile?.nip || profile?.nis || '-';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.bg }]} contentContainerStyle={{ paddingBottom: 40 }}>
       {/* 1. Profile Header */}
-      <View style={styles.header}>
-        <View style={styles.avatarContainer}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.avatarContainer, { borderColor: colors.primary }]}>
           {uploadingAvatar ? (
-             <View style={styles.avatarPlaceholder}>
-               <ActivityIndicator size="large" color={COLORS.primary} />
+             <View style={[styles.avatarPlaceholder, { backgroundColor: colors.bg }]}>
+               <ActivityIndicator size="large" color={colors.primary} />
              </View>
           ) : profile?.avatar_url ? (
             <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
           ) : (
-            <View style={styles.avatarPlaceholder}>
-               <User size={40} color={COLORS.primary} />
+            <View style={[styles.avatarPlaceholder, { backgroundColor: colors.bg }]}>
+               <User size={40} color={colors.primary} />
             </View>
           )}
-          <TouchableOpacity style={styles.cameraBtn} onPress={handlePickImage} disabled={uploadingAvatar}>
+          <TouchableOpacity style={[styles.cameraBtn, { backgroundColor: colors.primary, borderColor: colors.card }]} onPress={handlePickImage} disabled={uploadingAvatar}>
             <Camera size={14} color="#fff" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.name}>{profile?.full_name}</Text>
-        <Text style={styles.roleTag}>
+        <Text style={[styles.name, { color: colors.text }]}>{profile?.full_name}</Text>
+        <Text style={[styles.roleTag, { color: colors.textSub, backgroundColor: colors.bg, borderColor: colors.border }]}>
           {user?.role?.toUpperCase()} • {identityLabel}: {identityValue}
         </Text>
       </View>
 
       {/* 2. Telegram Verification Alert (If not verified) */}
       {!profile?.telegram_chat_id && (
-        <View style={styles.alertBox}>
-          <View style={styles.alertIcon}>
-            <Send size={20} color={COLORS.info} />
+        <View style={[styles.alertBox, { backgroundColor: colors.info + '10', borderColor: colors.info + '30' }]}>
+          <View style={[styles.alertIcon, { backgroundColor: colors.info + '20' }]}>
+            <Send size={20} color={colors.info} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.alertTitle}>Verifikasi Telegram</Text>
-            <Text style={styles.alertSub}>Hubungkan akun Anda untuk notifikasi real-time.</Text>
+            <Text style={[styles.alertTitle, { color: colors.text }]}>Verifikasi Telegram</Text>
+            <Text style={[styles.alertSub, { color: colors.textSub }]}>Hubungkan akun Anda untuk notifikasi real-time.</Text>
           </View>
-          <TouchableOpacity style={styles.alertBtn} onPress={handleVerifyTelegram}>
+          <TouchableOpacity style={[styles.alertBtn, { backgroundColor: colors.info }]} onPress={handleVerifyTelegram}>
             <Text style={styles.alertBtnText}>Hubungkan</Text>
           </TouchableOpacity>
         </View>
@@ -233,25 +236,26 @@ export default function ProfileScreen() {
 
       {/* 3. Account Settings (Ported from Web) */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Akun & Data Diri</Text>
-        <View style={styles.card}>
+        <Text style={[styles.sectionTitle, { color: colors.textSub }]}>Akun & Data Diri</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
            {message && (
-             <View style={[styles.localMessage, { backgroundColor: message.type === 'success' ? COLORS.success + '15' : COLORS.danger + '15' }]}>
-               <Text style={[styles.localMessageText, { color: message.type === 'success' ? COLORS.success : COLORS.danger }]}>{message.text}</Text>
+             <View style={[styles.localMessage, { backgroundColor: message.type === 'success' ? colors.success + '15' : colors.danger + '15' }]}>
+               <Text style={[styles.localMessageText, { color: message.type === 'success' ? colors.success : colors.danger }]}>{message?.text}</Text>
              </View>
            )}
 
            {/* Full Name */}
            <View style={styles.inputGroup}>
               <View style={styles.inputLabelRow}>
-                 <User size={14} color={COLORS.textSub} />
-                 <Text style={styles.inputLabel}>Nama Lengkap</Text>
+                 <User size={14} color={colors.textSub} />
+                 <Text style={[styles.inputLabel, { color: colors.textSub }]}>Nama Lengkap</Text>
               </View>
               <TextInput 
-                style={[styles.input, user?.role === 'student' && { backgroundColor: COLORS.bg, opacity: 0.7 }]} 
+                style={[styles.input, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }, user?.role === 'student' && { opacity: 0.7 }]} 
                 value={formData.full_name} 
                 onChangeText={(text) => setFormData({ ...formData, full_name: text })} 
                 placeholder="Nama Lengkap"
+                placeholderTextColor={colors.textSub}
                 editable={user?.role !== 'student'}
               />
            </View>
@@ -259,35 +263,36 @@ export default function ProfileScreen() {
            {/* Password */}
            <View style={styles.inputGroup}>
               <View style={styles.inputLabelRow}>
-                 <Lock size={14} color={COLORS.textSub} />
-                 <Text style={styles.inputLabel}>Password Login</Text>
+                 <Lock size={14} color={colors.textSub} />
+                 <Text style={[styles.inputLabel, { color: colors.textSub }]}>Password Login</Text>
               </View>
               <TextInput 
-                style={styles.input} 
+                style={[styles.input, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }]} 
                 value={formData.password} 
                 onChangeText={(text) => setFormData({ ...formData, password: text })} 
                 placeholder="Password"
+                placeholderTextColor={colors.textSub}
                 secureTextEntry
                />
             </View>
 
-           <View style={styles.divider} />
+           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
            {/* Readonly Info Row */}
            <View style={styles.readonlyRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.readLabel}>{user?.role === 'teacher' ? 'EMail' : 'NIS'}</Text>
-                <Text style={styles.readVal}>{formData.email || formData.nis}</Text>
+                <Text style={[styles.readLabel, { color: colors.textSub }]}>{user?.role === 'teacher' ? 'EMail' : 'NIS'}</Text>
+                <Text style={[styles.readVal, { color: colors.text }]}>{formData.email || formData.nis}</Text>
               </View>
               {user?.role === 'student' && (
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.readLabel}>Kelas</Text>
-                  <Text style={styles.readVal}>{formData.class}</Text>
+                  <Text style={[styles.readLabel, { color: colors.textSub }]}>Kelas</Text>
+                  <Text style={[styles.readVal, { color: colors.text }]}>{formData.class}</Text>
                 </View>
               )}
            </View>
 
-           <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
+           <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary }]} onPress={handleSave} disabled={saving}>
               {saving ? <ActivityIndicator size="small" color="#fff" /> : (
                 <>
                   <Save size={18} color="#fff" />
@@ -300,57 +305,70 @@ export default function ProfileScreen() {
 
       {/* 4. Security & Others */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Keamanan & Sistem</Text>
-        <View style={styles.card}>
-           <TouchableOpacity style={styles.menuItem}>
-              <View style={styles.menuIconBox}>
-                <Lock size={18} color={COLORS.primary} />
+        <Text style={[styles.sectionTitle, { color: colors.textSub }]}>Keamanan & Sistem</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+           {/* Theme Toggle */}
+           <TouchableOpacity style={styles.menuItem} onPress={toggleTheme}>
+              <View style={[styles.menuIconBox, { backgroundColor: colors.primary + '10' }]}>
+                {isDark ? <Moon size={18} color={colors.primary} /> : <Sun size={18} color={colors.primary} />}
               </View>
-              <Text style={styles.menuTitle}>Ganti Password</Text>
-              <ChevronRight size={18} color={COLORS.border} />
+              <Text style={[styles.menuTitle, { color: colors.text }]}>{isDark ? 'Mode Malam Aktif' : 'Mode Siang Aktif'}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: colors.primary + '20' }]}>
+                 <Text style={[styles.statusText, { color: colors.primary }]}>{theme.toUpperCase()}</Text>
+              </View>
            </TouchableOpacity>
-           <View style={styles.divider} />
+
+           <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
            <TouchableOpacity style={styles.menuItem}>
-              <View style={styles.menuIconBox}>
-                <HardDrive size={18} color={COLORS.primary} />
+              <View style={[styles.menuIconBox, { backgroundColor: colors.primary + '10' }]}>
+                <Lock size={18} color={colors.primary} />
               </View>
-              <Text style={styles.menuTitle}>Device Binding</Text>
-              <View style={styles.statusBadge}>
-                 <Text style={styles.statusText}>{profile?.device_id ? 'AKTIF' : 'NONAKTIF'}</Text>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>Ganti Password</Text>
+              <ChevronRight size={18} color={colors.border} />
+           </TouchableOpacity>
+           <View style={[styles.divider, { backgroundColor: colors.border }]} />
+           <TouchableOpacity style={styles.menuItem}>
+              <View style={[styles.menuIconBox, { backgroundColor: colors.primary + '10' }]}>
+                <HardDrive size={18} color={colors.primary} />
+              </View>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>Device Binding</Text>
+              <View style={[styles.statusBadge, { backgroundColor: colors.success + '20' }]}>
+                 <Text style={[styles.statusText, { color: colors.success }]}>{profile?.device_id ? 'AKTIF' : 'NONAKTIF'}</Text>
               </View>
            </TouchableOpacity>
         </View>
       </View>
 
       {/* 5. Logout */}
-      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-        <LogOut size={20} color={COLORS.danger} />
-        <Text style={styles.logoutText}>Keluar dari Aplikasi</Text>
+      <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: colors.danger + '10', borderColor: colors.danger + '30' }]} onPress={handleLogout}>
+        <LogOut size={20} color={colors.danger} />
+        <Text style={[styles.logoutText, { color: colors.danger }]}>Keluar dari Aplikasi</Text>
       </TouchableOpacity>
       
-      <Text style={styles.version}>HadirMu v1.2.0 • Build 2026</Text>
+      <Text style={[styles.version, { color: colors.textSub }]}>HadirMu v1.2.0 • Build 2026</Text>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
   },
   header: {
     alignItems: 'center',
     paddingVertical: 40,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   avatarContainer: {
     width: 110,
     height: 110,
     borderRadius: 55,
     borderWidth: 4,
-    borderColor: COLORS.primary,
+    borderColor: colors.primary,
     padding: 2,
     position: 'relative',
     marginBottom: 16,
@@ -364,7 +382,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 55,
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -372,63 +390,63 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     width: 32,
     height: 32,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: COLORS.card,
+    borderColor: colors.card,
   },
   name: {
     fontSize: 24,
     fontWeight: '900',
-    color: COLORS.text,
+    color: colors.text,
   },
   roleTag: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.textSub,
+    color: colors.textSub,
     marginTop: 4,
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: RADIUS.full,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   alertBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.info + '10',
+    backgroundColor: colors.info + '10',
     margin: 20,
     padding: 16,
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: COLORS.info + '30',
+    borderColor: colors.info + '30',
     gap: 12,
   },
   alertIcon: {
     width: 40,
     height: 40,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.info + '20',
+    backgroundColor: colors.info + '20',
     justifyContent: 'center',
     alignItems: 'center',
   },
   alertTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: COLORS.text,
+    color: colors.text,
   },
   alertSub: {
     fontSize: 11,
-    color: COLORS.textSub,
+    color: colors.textSub,
     marginTop: 2,
   },
   alertBtn: {
-    backgroundColor: COLORS.info,
+    backgroundColor: colors.info,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: RADIUS.lg,
@@ -445,17 +463,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '900',
-    color: COLORS.textSub,
+    color: colors.textSub,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
     marginBottom: 12,
     marginLeft: 4,
   },
   card: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     padding: 16,
     ...SHADOW.card,
   },
@@ -471,21 +489,21 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: COLORS.textSub,
+    color: colors.textSub,
   },
   input: {
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
     borderRadius: RADIUS.lg,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.text,
+    color: colors.text,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   saveBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -507,7 +525,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primary + '10',
+    backgroundColor: colors.primary + '10',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -516,10 +534,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
-    color: COLORS.text,
+    color: colors.text,
   },
   statusBadge: {
-    backgroundColor: COLORS.success + '20',
+    backgroundColor: colors.success + '20',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: RADIUS.md,
@@ -527,11 +545,11 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: '900',
-    color: COLORS.success,
+    color: colors.success,
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.border,
     marginVertical: 4,
   },
   logoutBtn: {
@@ -541,20 +559,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 30,
     paddingVertical: 16,
-    backgroundColor: COLORS.danger + '10',
+    backgroundColor: colors.danger + '10',
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: COLORS.danger + '30',
+    borderColor: colors.danger + '30',
     gap: 10,
   },
   logoutText: {
     fontSize: 16,
     fontWeight: '800',
-    color: COLORS.danger,
+    color: colors.danger,
   },
   version: {
     textAlign: 'center',
-    color: COLORS.textSub,
+    color: colors.textSub,
     fontSize: 12,
     marginTop: 30,
     opacity: 0.5,
@@ -581,14 +599,14 @@ const styles = StyleSheet.create({
   readLabel: {
     fontSize: 10,
     fontWeight: '900',
-    color: COLORS.textSub,
+    color: colors.textSub,
     textTransform: 'uppercase',
     marginBottom: 4,
   },
   readVal: {
     fontSize: 14,
     fontWeight: '700',
-    color: COLORS.text,
+    color: colors.text,
     opacity: 0.7,
   },
 });

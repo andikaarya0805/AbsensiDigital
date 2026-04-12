@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
-import { COLORS, RADIUS, SHADOW } from '../../constants/theme';
+import { RADIUS, SHADOW } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { 
+  Plus, Search, MoreVertical, Edit2, Trash2, 
+  GraduationCap, ChevronLeft, X, Save, 
   Mail, BookOpen, Key, Loader2, Hash, Filter,
   RotateCcw, Smartphone
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 export default function AdminStudentsScreen() {
+    const { colors } = useTheme();
+    const styles = createStyles(colors);
     const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     const router = useRouter();
     const [students, setStudents] = useState<any[]>([]);
@@ -195,7 +200,7 @@ export default function AdminStudentsScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft size={24} color={COLORS.text} />
+                    <ChevronLeft size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>Manajemen Siswa</Text>
@@ -209,18 +214,18 @@ export default function AdminStudentsScreen() {
             {/* Toolbar (Search & Filter) */}
             <View style={styles.toolbar}>
                 <View style={[styles.searchBox, SHADOW.sm]}>
-                    <Search size={16} color={COLORS.textSub} style={styles.searchIcon} />
+                    <Search size={16} color={colors.textSub} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Cari siswa (Nama/NIS)..."
-                        placeholderTextColor={COLORS.textSub}
+                        placeholderTextColor={colors.textSub}
                         value={searchTerm}
                         onChangeText={setSearchTerm}
                     />
                 </View>
                 
                 <View style={styles.filterRow}>
-                   <Filter size={14} color={COLORS.textSub} />
+                   <Filter size={14} color={colors.textSub} />
                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.classFilter}>
                         <TouchableOpacity 
                           style={[styles.classTab, selectedClassId === 'all' && styles.classTabActive]}
@@ -243,36 +248,36 @@ export default function AdminStudentsScreen() {
 
             <ScrollView contentContainerStyle={styles.listContent}>
                 {loading ? (
-                    <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
                 ) : filteredStudents.length > 0 ? (
                     filteredStudents.map((student, idx) => (
                         <View key={student.id} style={styles.studentCard}>
                             <View style={styles.cardMain}>
                                 <View style={styles.avatarBox}>
-                                    <GraduationCap size={24} color={COLORS.success} />
+                                    <GraduationCap size={24} color={colors.success} />
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.studentName}>{student.full_name}</Text>
                                     <View style={styles.metaRow}>
-                                        <Hash size={10} color={COLORS.textSub} />
+                                        <Hash size={10} color={colors.textSub} />
                                         <Text style={styles.studentNis}>{student.nis}</Text>
                                         <Text style={styles.metaDivider}>•</Text>
-                                        <BookOpen size={10} color={COLORS.textSub} />
+                                        <BookOpen size={10} color={colors.textSub} />
                                         <Text style={styles.studentClass}>{student.classes?.name || 'No Class'}</Text>
                                     </View>
                                 </View>
                                 <View style={styles.actionRow}>
-                                    <TouchableOpacity style={styles.iconAction} onPress={() => handleResetAction(student, 'reset_password')} title="Reset Password">
-                                        <Key size={16} color={COLORS.warning} />
+                                    <TouchableOpacity style={styles.iconAction} onPress={() => handleResetAction(student, 'reset_password')}>
+                                        <Key size={16} color={colors.warning} />
                                     </TouchableOpacity>
-                                    <TouchableOpacity style={styles.iconAction} onPress={() => handleResetAction(student, 'reset_device_id')} title="Reset Device ID">
-                                        <Smartphone size={16} color={COLORS.primary} />
+                                    <TouchableOpacity style={styles.iconAction} onPress={() => handleResetAction(student, 'reset_device_id')}>
+                                        <Smartphone size={16} color={colors.primary} />
                                     </TouchableOpacity>
                                     <TouchableOpacity style={styles.iconAction} onPress={() => openModal(student)}>
-                                        <Edit2 size={16} color={COLORS.primary} />
+                                        <Edit2 size={16} color={colors.primary} />
                                     </TouchableOpacity>
                                     <TouchableOpacity style={styles.iconAction} onPress={() => handleDelete(student)}>
-                                        <Trash2 size={16} color={COLORS.danger} />
+                                        <Trash2 size={16} color={colors.danger} />
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -280,7 +285,7 @@ export default function AdminStudentsScreen() {
                     ))
                 ) : (
                     <View style={styles.emptyContainer}>
-                        <GraduationCap size={48} color={COLORS.border} />
+                        <GraduationCap size={48} color={colors.border} />
                         <Text style={styles.emptyText}>Tidak ada siswa yang ditemukan</Text>
                     </View>
                 )}
@@ -299,7 +304,7 @@ export default function AdminStudentsScreen() {
                                 <Text style={styles.modalSubHeader}>Lengkapi data akademik</Text>
                             </View>
                             <TouchableOpacity onPress={() => setShowModal(false)} style={styles.closeBtn}>
-                                <X size={24} color={COLORS.textSub} />
+                                <X size={24} color={colors.textSub} />
                             </TouchableOpacity>
                         </View>
 
@@ -309,7 +314,7 @@ export default function AdminStudentsScreen() {
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Contoh: Andi Wijaya"
-                                    placeholderTextColor={COLORS.border}
+                                    placeholderTextColor={colors.border}
                                     value={formData.full_name}
                                     onChangeText={(text) => setFormData({...formData, full_name: text})}
                                 />
@@ -321,7 +326,7 @@ export default function AdminStudentsScreen() {
                                     <TextInput
                                         style={styles.input}
                                         placeholder="12..."
-                                        placeholderTextColor={COLORS.border}
+                                        placeholderTextColor={colors.border}
                                         value={formData.nis}
                                         onChangeText={(text) => setFormData({...formData, nis: text})}
                                     />
@@ -339,9 +344,9 @@ export default function AdminStudentsScreen() {
                                                 <TouchableOpacity 
                                                   key={c.id} 
                                                   onPress={() => setFormData({...formData, class_id: c.id})}
-                                                  style={[styles.pickerItem, formData.class_id === c.id && { backgroundColor: COLORS.primary + '10' }]}
+                                                  style={[styles.pickerItem, formData.class_id === c.id && { backgroundColor: colors.primary + '10' }]}
                                                 >
-                                                    <Text style={[styles.pickerText, formData.class_id === c.id && { color: COLORS.primary }]}>{c.name}</Text>
+                                                    <Text style={[styles.pickerText, formData.class_id === c.id && { color: colors.primary }]}>{c.name}</Text>
                                                 </TouchableOpacity>
                                             ))}
                                         </ScrollView>
@@ -354,7 +359,7 @@ export default function AdminStudentsScreen() {
                                 <TextInput
                                     style={styles.input}
                                     placeholder="******"
-                                    placeholderTextColor={COLORS.border}
+                                    placeholderTextColor={colors.border}
                                     secureTextEntry
                                     value={formData.password}
                                     onChangeText={(text) => setFormData({...formData, password: text})}
@@ -385,44 +390,44 @@ export default function AdminStudentsScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.bg,
+        backgroundColor: colors.bg,
     },
     header: {
         paddingTop: 60,
         paddingHorizontal: 24,
         paddingBottom: 20,
-        backgroundColor: COLORS.card,
+        backgroundColor: colors.card,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 16,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
+        borderBottomColor: colors.border,
     },
     backBtn: {
         width: 40,
         height: 40,
         borderRadius: RADIUS.lg,
-        backgroundColor: COLORS.bg,
+        backgroundColor: colors.bg,
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerTitle: {
         fontSize: 18,
         fontWeight: '900',
-        color: COLORS.text,
+        color: colors.text,
     },
     headerSub: {
         fontSize: 12,
-        color: COLORS.textSub,
+        color: colors.textSub,
     },
     addBtn: {
         width: 44,
         height: 44,
         borderRadius: RADIUS.lg,
-        backgroundColor: COLORS.primary,
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         ...SHADOW.primary,
@@ -432,13 +437,13 @@ const styles = StyleSheet.create({
         paddingBottom: 8,
     },
     searchBox: {
-        backgroundColor: COLORS.card,
+        backgroundColor: colors.card,
         borderRadius: RADIUS.xl,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
         marginBottom: 16,
     },
     searchIcon: {
@@ -448,7 +453,7 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 50,
         fontSize: 14,
-        color: COLORS.text,
+        color: colors.text,
         fontWeight: '600',
     },
     filterRow: {
@@ -464,33 +469,33 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: RADIUS.full,
-        backgroundColor: COLORS.card,
+        backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
     },
     classTabActive: {
-        backgroundColor: COLORS.text,
-        borderColor: COLORS.text,
+        backgroundColor: colors.text,
+        borderColor: colors.text,
     },
     classTabText: {
         fontSize: 12,
         fontWeight: '800',
-        color: COLORS.textSub,
+        color: colors.textSub,
     },
     classTabTextActive: {
-        color: COLORS.card,
+        color: colors.card,
     },
     listContent: {
         padding: 24,
         paddingBottom: 40,
     },
     studentCard: {
-        backgroundColor: COLORS.card,
+        backgroundColor: colors.card,
         borderRadius: RADIUS.xl,
         padding: 16,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
         ...SHADOW.sm,
     },
     cardMain: {
@@ -502,14 +507,14 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: RADIUS.lg,
-        backgroundColor: COLORS.success + '10',
+        backgroundColor: colors.success + '10',
         justifyContent: 'center',
         alignItems: 'center',
     },
     studentName: {
         fontSize: 15,
         fontWeight: '900',
-        color: COLORS.text,
+        color: colors.text,
     },
     metaRow: {
         flexDirection: 'row',
@@ -520,17 +525,17 @@ const styles = StyleSheet.create({
     studentNis: {
         fontSize: 11,
         fontWeight: '700',
-        color: COLORS.textSub,
+        color: colors.textSub,
         fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
     metaDivider: {
-        color: COLORS.border,
+        color: colors.border,
         fontSize: 10,
     },
     studentClass: {
         fontSize: 10,
         fontWeight: '900',
-        color: COLORS.primary,
+        color: colors.primary,
         textTransform: 'uppercase',
     },
     actionRow: {
@@ -541,24 +546,24 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: RADIUS.md,
-        backgroundColor: COLORS.bg,
+        backgroundColor: colors.bg,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
     },
     cardFooter: {
         marginTop: 12,
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: COLORS.bg,
+        borderTopColor: colors.bg,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
     },
     footerText: {
         fontSize: 11,
-        color: COLORS.textSub,
+        color: colors.textSub,
         fontWeight: '600',
     },
     emptyContainer: {
@@ -568,7 +573,7 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         marginTop: 12,
-        color: COLORS.textSub,
+        color: colors.textSub,
         fontWeight: '700',
     },
     modalOverlay: {
@@ -577,7 +582,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: COLORS.bg,
+        backgroundColor: colors.bg,
         borderTopLeftRadius: RADIUS.xl,
         borderTopRightRadius: RADIUS.xl,
         maxHeight: '90%',
@@ -588,18 +593,18 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
-        backgroundColor: COLORS.card,
+        borderBottomColor: colors.border,
+        backgroundColor: colors.card,
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: '900',
-        color: COLORS.text,
+        color: colors.text,
     },
     modalSubHeader: {
         fontSize: 11,
         fontWeight: '800',
-        color: COLORS.textSub,
+        color: colors.textSub,
         textTransform: 'uppercase',
         letterSpacing: 1,
         marginTop: 2,
@@ -620,68 +625,68 @@ const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 10,
         fontWeight: '900',
-        color: COLORS.text,
+        color: colors.text,
         marginBottom: 8,
         letterSpacing: 1,
     },
     input: {
-        backgroundColor: COLORS.card,
+        backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
         borderRadius: RADIUS.lg,
         paddingHorizontal: 16,
         paddingVertical: 12,
         fontSize: 14,
         fontWeight: '700',
-        color: COLORS.text,
+        color: colors.text,
     },
     selectWrapper: {
         position: 'relative',
     },
     miniPicker: {
         maxHeight: 120,
-        backgroundColor: COLORS.card,
+        backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
         borderRadius: RADIUS.lg,
         marginTop: 4,
     },
     pickerItem: {
         padding: 12,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.bg,
+        borderBottomColor: colors.bg,
     },
     pickerText: {
         fontSize: 12,
         fontWeight: '700',
-        color: COLORS.text,
+        color: colors.text,
     },
     modalFooter: {
         padding: 24,
         flexDirection: 'row',
         gap: 12,
-        backgroundColor: COLORS.card,
+        backgroundColor: colors.card,
         borderTopWidth: 1,
-        borderTopColor: COLORS.border,
+        borderTopColor: colors.border,
     },
     cancelBtn: {
         flex: 1,
         height: 54,
         borderRadius: RADIUS.lg,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
         justifyContent: 'center',
         alignItems: 'center',
     },
     cancelText: {
         fontSize: 15,
         fontWeight: '800',
-        color: COLORS.textSub,
+        color: colors.textSub,
     },
     saveBtn: {
         flex: 2,
         height: 54,
-        backgroundColor: COLORS.primary,
+        backgroundColor: colors.primary,
         borderRadius: RADIUS.lg,
         flexDirection: 'row',
         justifyContent: 'center',

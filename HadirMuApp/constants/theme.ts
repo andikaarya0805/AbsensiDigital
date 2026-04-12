@@ -1,4 +1,27 @@
-export const COLORS = {
+export const LIGHT_COLORS = {
+  // Background layers
+  bg: '#f8fafc',       // slate-50
+  card: '#ffffff',     // white
+  border: '#e2e8f0',   // slate-200
+
+  // Brand
+  primary: '#0ea5e9',  // sky-500
+  primaryDark: '#0284c7', // sky-600
+  accent: '#38bdf8',   // sky-400
+
+  // Status
+  success: '#22c55e',  // green-500
+  warning: '#f59e0b',  // amber-500
+  danger: '#ef4444',   // red-500
+  info: '#3b82f6',     // blue-500
+
+  // Text
+  text: '#0f172a',     // slate-900 (Dark text for light mode)
+  textMuted: '#64748b', // slate-500
+  textSub: '#94a3b8',  // slate-400
+};
+
+export const DARK_COLORS = {
   // Background layers
   bg: '#0f172a',       // slate-900
   card: '#1e293b',     // slate-800
@@ -21,10 +44,8 @@ export const COLORS = {
   textSub: '#64748b',  // slate-500
 };
 
-export const FONT = {
-  regular: undefined,
-  bold: undefined,
-};
+// Aliased as COLORS for backward compatibility during transition
+export const COLORS = DARK_COLORS;
 
 export const RADIUS = {
   sm: 8,

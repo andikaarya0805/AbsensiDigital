@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Image, Alert, Modal, Linking, ActivityIndicator, Dimensions } from 'react-native';
-import { COLORS, RADIUS, SHADOW } from '../../constants/theme';
+import { RADIUS, SHADOW } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -14,7 +15,7 @@ import {
 import QRCode from 'react-native-qrcode-svg';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
-import { Paths, writeAsStringAsync } from 'expo-file-system';
+import { documentDirectory, writeAsStringAsync } from 'expo-file-system';
 import { shareAsync } from 'expo-sharing';
 import { validateQRPayload } from '../../lib/qr';
 import * as Device from 'expo-device';
@@ -22,22 +23,24 @@ import * as SecureStore from 'expo-secure-store';
 
 const { width } = Dimensions.get('window');
 
-const STATUS_OPTIONS = [
-  { value: 'hadir', label: 'HADIR', color: COLORS.success },
-  { value: 'izin', label: 'IZIN', color: COLORS.info },
-  { value: 'sakit', label: 'SAKIT', color: COLORS.warning },
-  { value: 'alpha', label: 'ALPHA', color: COLORS.danger },
+const getStatusOptions = (colors: any) => [
+  { value: 'hadir', label: 'HADIR', color: colors.success },
+  { value: 'izin', label: 'IZIN', color: colors.info },
+  { value: 'sakit', label: 'SAKIT', color: colors.warning },
+  { value: 'alpha', label: 'ALPHA', color: colors.danger },
 ];
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function HomeScreen() {
+  const { colors, theme, setTheme, isDark } = useTheme();
+  const STATUS_OPTIONS = getStatusOptions(colors);
   const router = useRouter();
   const { user, logout } = useAuth();
   const [refreshing, setRefreshing] = useState(true);
   const [profile, setProfile] = useState<any>(null);
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const styles = createStyles(colors);
   
   // --- Teacher States ---
   const [qrValue, setQrValue] = useState('');
@@ -100,7 +103,7 @@ export default function HomeScreen() {
     } catch (err) {
       console.error(err);
     } finally {
-      setRefreshing(false);
+      if (typeof setRefreshing === 'function') setRefreshing(false);
     }
   };
 
@@ -253,7 +256,7 @@ export default function HomeScreen() {
     });
 
     const filename = `Absensi_${selectedClass}_${today}.csv`;
-    const filepath = Paths.join(Paths.document.uri, filename);
+    const filepath = `${documentDirectory}${filename}`;
 
     try {
       await writeAsStringAsync(filepath, csv, { encoding: 'utf8' });
@@ -296,7 +299,7 @@ export default function HomeScreen() {
 
       const monthName = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(now);
       const filename = `Rekap_Bulanan_${selectedClass}_${monthName}.csv`;
-      const filepath = Paths.join(Paths.document.uri, filename);
+      const filepath = `${documentDirectory}${filename}`;
 
       await writeAsStringAsync(filepath, csv, { encoding: 'utf8' });
       await shareAsync(filepath);
@@ -372,7 +375,7 @@ export default function HomeScreen() {
   if (!user || refreshing || isVerified === null) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -405,7 +408,7 @@ export default function HomeScreen() {
 
       <ScrollView 
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchInitialData} tintColor={COLORS.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchInitialData} tintColor={colors.primary} />}
       >
         <View style={styles.header}>
             <View style={styles.headerLeft}>
@@ -413,9 +416,9 @@ export default function HomeScreen() {
                 {profile?.avatar_url ? (
                   <Image source={{ uri: profile.avatar_url }} style={styles.avatarImg} />
                 ) : (
-                  <User size={24} color={COLORS.primary} />
+                  <User size={24} color={colors.primary} />
                 )}
-                <View style={[styles.statusDot, { backgroundColor: isVerified ? COLORS.success : COLORS.warning }]} />
+                <View style={[styles.statusDot, { backgroundColor: isVerified ? colors.success : colors.warning }]} />
               </TouchableOpacity>
               <View>
                 <Text style={styles.greeting}>Selamat datang,</Text>
@@ -423,8 +426,8 @@ export default function HomeScreen() {
               </View>
             </View>
             <View style={styles.headerRight}>
-               <TouchableOpacity onPress={() => setIsDarkMode(!isDarkMode)} style={styles.iconBtn}>
-                  {isDarkMode ? <Sun size={20} color={COLORS.warning} /> : <Moon size={20} color={COLORS.textSub} />}
+               <TouchableOpacity onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')} style={styles.iconBtn}>
+                  {theme === 'dark' ? <Sun size={20} color={colors.warning} /> : <Moon size={20} color={colors.textSub} />}
                </TouchableOpacity>
                <TouchableOpacity 
                  onPress={() => Alert.alert('Logout', 'Yakin ingin keluar?', [
@@ -433,7 +436,7 @@ export default function HomeScreen() {
                  ])} 
                  style={styles.iconBtn}
                >
-                  <LogOut size={20} color={COLORS.danger} />
+                  <LogOut size={20} color={colors.danger} />
                </TouchableOpacity>
             </View>
         </View>
@@ -453,8 +456,8 @@ export default function HomeScreen() {
                         router.push('/profile');
                       }}
                     >
-                        <View style={[styles.sheetIconBox, { backgroundColor: COLORS.primary + '15' }]}>
-                          <User size={20} color={COLORS.primary} />
+                        <View style={[styles.sheetIconBox, { backgroundColor: colors.primary + '15' }]}>
+                          <User size={20} color={colors.primary} />
                         </View>
                         <View>
                           <Text style={styles.sheetItemTitle}>Pengaturan Profil</Text>
@@ -472,11 +475,11 @@ export default function HomeScreen() {
                         ]);
                       }}
                     >
-                        <View style={[styles.sheetIconBox, { backgroundColor: COLORS.danger + '15' }]}>
-                          <LogOut size={20} color={COLORS.danger} />
+                        <View style={[styles.sheetIconBox, { backgroundColor: colors.danger + '15' }]}>
+                          <LogOut size={20} color={colors.danger} />
                         </View>
                         <View>
-                          <Text style={[styles.sheetItemTitle, { color: COLORS.danger }]}>Keluar Aplikasi</Text>
+                          <Text style={[styles.sheetItemTitle, { color: colors.danger }]}>Keluar Aplikasi</Text>
                           <Text style={styles.sheetItemSub}>Selesaikan sesi Anda</Text>
                         </View>
                     </TouchableOpacity>
@@ -511,7 +514,7 @@ export default function HomeScreen() {
 
             {/* Launchpad Quick Actions */}
             <View style={styles.sectionHeader}>
-              <Maximize2 size={18} color={COLORS.primary} />
+              <Maximize2 size={18} color={colors.primary} />
               <Text style={styles.tableTitle}>Admin Launchpad</Text>
             </View>
             <View style={styles.launchpadGrid}>
@@ -540,14 +543,14 @@ export default function HomeScreen() {
             {/* System Status */}
             <View style={styles.sysStatusRow}>
                <View style={styles.sysCard}>
-                  <CheckCircle2 size={24} color={COLORS.success} />
+                  <CheckCircle2 size={24} color={colors.success} />
                   <View>
                     <Text style={styles.sysTitle}>Database Layer</Text>
                     <Text style={styles.sysSub}>Connected & Optimized</Text>
                   </View>
                </View>
                <View style={styles.sysCard}>
-                  <RefreshCw size={24} color={COLORS.primary} />
+                  <RefreshCw size={24} color={colors.primary} />
                   <View>
                     <Text style={styles.sysTitle}>Live Updates</Text>
                     <Text style={styles.sysSub}>Sync Mode Active</Text>
@@ -563,7 +566,7 @@ export default function HomeScreen() {
             {/* 1. Session Selector */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <BookOpen size={18} color={COLORS.primary} />
+                <BookOpen size={18} color={colors.primary} />
                 <Text style={styles.cardTitle}>Pilih Kelas & Mata Pelajaran</Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sessionScroll}>
@@ -587,7 +590,7 @@ export default function HomeScreen() {
             {/* 2. QR Generator Card */}
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <QrCode size={18} color={COLORS.primary} />
+                  <QrCode size={18} color={colors.primary} />
                   <Text style={styles.cardTitle}>Attendance QR</Text>
                 </View>
                 <View style={styles.qrContent}>
@@ -596,7 +599,7 @@ export default function HomeScreen() {
                    </View>
                    <View style={styles.qrMeta}>
                      <View style={styles.timerBox}>
-                        <Clock size={16} color={COLORS.textSub} />
+                        <Clock size={16} color={colors.textSub} />
                         <Text style={styles.timerText}>{timeLeft}s</Text>
                      </View>
                      <View style={styles.miniProgress}>
@@ -604,9 +607,9 @@ export default function HomeScreen() {
                      </View>
                      <View style={styles.qrActions}>
                         <TouchableOpacity style={styles.qrBtn} onPress={generateQR}>
-                          <RefreshCw size={18} color={COLORS.primary} />
+                          <RefreshCw size={18} color={colors.primary} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.qrBtn, { backgroundColor: COLORS.primary }]} onPress={() => setIsFullscreen(true)}>
+                        <TouchableOpacity style={[styles.qrBtn, { backgroundColor: colors.primary }]} onPress={() => setIsFullscreen(true)}>
                           <Maximize2 size={18} color="#fff" />
                         </TouchableOpacity>
                      </View>
@@ -616,14 +619,14 @@ export default function HomeScreen() {
 
             {/* 3. Rekap Absensi Table */}
             <View style={styles.tableHeader}>
-               <Users size={18} color={COLORS.primary} />
+               <Users size={18} color={colors.primary} />
                <Text style={styles.tableTitle}>Rekap Absensi</Text>
                <View style={{ flexDirection: 'row', gap: 6 }}>
                   <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
                       <Download size={14} color="#fff" />
                       <Text style={styles.exportText}>Harian</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.exportBtn, { backgroundColor: COLORS.info }]} onPress={handleExportMonthly}>
+                  <TouchableOpacity style={[styles.exportBtn, { backgroundColor: colors.info }]} onPress={handleExportMonthly}>
                       <Calendar size={14} color="#fff" />
                       <Text style={styles.exportText}>Bulanan</Text>
                   </TouchableOpacity>
@@ -640,13 +643,13 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.rowAction}>
                         <TouchableOpacity 
-                          style={[styles.statusBadge, { backgroundColor: studentStatuses[s.id] ? STATUS_OPTIONS.find(o => o.value === studentStatuses[s.id])?.color + '20' : COLORS.border + '20' }]}
+                          style={[styles.statusBadge, { backgroundColor: studentStatuses[s.id] ? STATUS_OPTIONS.find(o => o.value === studentStatuses[s.id])?.color + '20' : colors.border + '20' }]}
                           onPress={() => {
                             setSelectedStudent(s);
                             setShowStatusModal(true);
                           }}
                         >
-                           <Text style={[styles.statusText, { color: studentStatuses[s.id] ? STATUS_OPTIONS.find(o => o.value === studentStatuses[s.id])?.color : COLORS.textSub }]}>
+                           <Text style={[styles.statusText, { color: studentStatuses[s.id] ? STATUS_OPTIONS.find(o => o.value === studentStatuses[s.id])?.color : colors.textSub }]}>
                              {(studentStatuses[s.id] || 'ALPHA').toUpperCase()}
                            </Text>
                         </TouchableOpacity>
@@ -666,7 +669,7 @@ export default function HomeScreen() {
             {/* 1. Status Overlay if not verified */}
             {!isVerified && (
               <View style={styles.verifyBox}>
-                <ShieldAlert size={40} color={COLORS.warning} />
+                <ShieldAlert size={40} color={colors.warning} />
                 <Text style={styles.verifyTitle}>Belum Verifikasi</Text>
                 <Text style={styles.verifySub}>Hubungkan Telegram untuk absen</Text>
                 <TouchableOpacity style={styles.verifyBtn} onPress={handleVerifyTelegram}>
@@ -679,13 +682,13 @@ export default function HomeScreen() {
             {isVerified && (
               <View style={styles.scannerCard}>
                  <View style={styles.scannerHeader}>
-                    <Scan size={20} color={COLORS.primary} />
+                    <Scan size={20} color={colors.primary} />
                     <Text style={styles.scannerTitle}>Scan QR Presensi</Text>
                  </View>
                  
                  {scanStatus === 'success' ? (
                    <View style={styles.scanSuccess}>
-                      <CheckCircle2 size={60} color={COLORS.success} />
+                      <CheckCircle2 size={60} color={colors.success} />
                       <Text style={styles.successTitle}>Berhasil!</Text>
                       <Text style={styles.successSub}>{scanMessage}</Text>
                       <TouchableOpacity onPress={() => setScanStatus('idle')} style={styles.resetBtn}>
@@ -718,7 +721,7 @@ export default function HomeScreen() {
 
             {/* 3. Info GPS */}
             <View style={styles.tipBox}>
-              <MapPin size={18} color={COLORS.info} />
+              <MapPin size={18} color={colors.info} />
               <Text style={styles.tipText}>
                 Pastikan GPS aktif untuk mempermudah validasi lokasi (Geofencing).
               </Text>
@@ -756,10 +759,10 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
   },
   fullscreenOverlay: {
     flex: 1,
@@ -780,7 +783,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   fsLabel: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 2,
@@ -818,7 +821,7 @@ const styles = StyleSheet.create({
   },
   fsProgressFill: {
     height: '100%',
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
   },
   fsHint: {
     color: '#64748b',
@@ -846,12 +849,12 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderColor: colors.primary,
   },
   avatarImg: {
     width: '100%',
@@ -865,26 +868,26 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     borderWidth: 2,
-    borderColor: COLORS.bg,
+    borderColor: colors.bg,
   },
   greeting: {
     fontSize: 12,
-    color: COLORS.textSub,
+    color: colors.textSub,
   },
   name: {
     fontSize: 16,
     fontWeight: '900',
-    color: COLORS.text,
+    color: colors.text,
   },
   iconBtn: {
     width: 42,
     height: 42,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   teacherLayout: {
     width: '100%',
@@ -893,12 +896,12 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   card: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: RADIUS.xl,
     padding: 20,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -909,7 +912,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: COLORS.text,
+    color: colors.text,
   },
   sessionScroll: {
     flexDirection: 'row',
@@ -917,23 +920,23 @@ const styles = StyleSheet.create({
   sessionChip: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
     borderRadius: RADIUS.lg,
     marginRight: 10,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   activeChip: {
-    backgroundColor: COLORS.primary + '15',
-    borderColor: COLORS.primary,
+    backgroundColor: colors.primary + '15',
+    borderColor: colors.primary,
   },
   chipText: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.textSub,
+    color: colors.textSub,
   },
   activeChipText: {
-    color: COLORS.primary,
+    color: colors.primary,
   },
   qrContent: {
     flexDirection: 'row',
@@ -957,17 +960,17 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 18,
     fontWeight: '800',
-    color: COLORS.text,
+    color: colors.text,
   },
   miniProgress: {
     height: 4,
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
     borderRadius: 2,
     overflow: 'hidden',
   },
   miniFill: {
     height: '100%',
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
   },
   qrActions: {
     flexDirection: 'row',
@@ -978,10 +981,10 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
   },
   tableHeader: {
     flexDirection: 'row',
@@ -994,13 +997,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: '900',
-    color: COLORS.text,
+    color: colors.text,
   },
   exportBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: COLORS.success,
+    backgroundColor: colors.success,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: RADIUS.md,
@@ -1011,10 +1014,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   cardTable: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   tableRow: {
@@ -1022,7 +1025,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: colors.border,
   },
   rowInfo: {
     flex: 1,
@@ -1030,11 +1033,11 @@ const styles = StyleSheet.create({
   rowName: {
     fontSize: 14,
     fontWeight: '700',
-    color: COLORS.text,
+    color: colors.text,
   },
   rowNis: {
     fontSize: 10,
-    color: COLORS.textSub,
+    color: colors.textSub,
     marginTop: 2,
   },
   rowAction: {
@@ -1053,32 +1056,32 @@ const styles = StyleSheet.create({
   emptyTable: {
     padding: 40,
     textAlign: 'center',
-    color: COLORS.textMuted,
+    color: colors.textMuted,
     fontSize: 13,
   },
   verifyBox: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: RADIUS.xl,
     padding: 30,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     marginBottom: 20,
   },
   verifyTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: COLORS.text,
+    color: colors.text,
     marginTop: 12,
   },
   verifySub: {
     fontSize: 13,
-    color: COLORS.textSub,
+    color: colors.textSub,
     marginTop: 4,
     textAlign: 'center',
   },
   verifyBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: RADIUS.lg,
@@ -1089,11 +1092,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   scannerCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: RADIUS.xl,
     padding: 20,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   scannerHeader: {
     flexDirection: 'row',
@@ -1104,7 +1107,7 @@ const styles = StyleSheet.create({
   scannerTitle: {
     fontSize: 16,
     fontWeight: '900',
-    color: COLORS.text,
+    color: colors.text,
   },
   scannerContainer: {
     width: '100%',
@@ -1126,7 +1129,7 @@ const styles = StyleSheet.create({
   },
   permBtn: {
     marginTop: 10,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: RADIUS.md,
@@ -1145,14 +1148,14 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderColor: colors.primary,
     borderRadius: RADIUS.lg,
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   scanHint: {
     textAlign: 'center',
     fontSize: 11,
-    color: COLORS.textSub,
+    color: colors.textSub,
     marginTop: 16,
     fontWeight: '600',
   },
@@ -1163,12 +1166,12 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: '900',
-    color: COLORS.text,
+    color: colors.text,
     marginTop: 16,
   },
   successSub: {
     fontSize: 14,
-    color: COLORS.textSub,
+    color: colors.textSub,
     marginTop: 8,
   },
   resetBtn: {
@@ -1176,7 +1179,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   resetText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontWeight: '800',
     fontSize: 13,
   },
@@ -1193,7 +1196,7 @@ const styles = StyleSheet.create({
   tipText: {
     flex: 1,
     fontSize: 11,
-    color: COLORS.info,
+    color: colors.info,
     marginLeft: 12,
     lineHeight: 16,
   },
@@ -1204,11 +1207,11 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   pickerModal: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: RADIUS.xl,
     padding: 24,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   pickerTitle: {
     color: '#fff',
@@ -1229,7 +1232,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     padding: 14,
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
   },
@@ -1248,7 +1251,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelText: {
-    color: COLORS.textSub,
+    color: colors.textSub,
     fontWeight: '700',
   },
   // --- Admin Styles ---
@@ -1264,7 +1267,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: (width - 56) / 2,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: RADIUS.xl,
     padding: 16,
     borderLeftWidth: 4,
@@ -1281,12 +1284,12 @@ const styles = StyleSheet.create({
   statVal: {
     fontSize: 24,
     fontWeight: '900',
-    color: COLORS.text,
+    color: colors.text,
   },
   statLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: COLORS.textSub,
+    color: colors.textSub,
     textTransform: 'uppercase',
     marginTop: 2,
     letterSpacing: 0.5,
@@ -1305,13 +1308,13 @@ const styles = StyleSheet.create({
   },
   launchItem: {
     width: (width - 64) / 3,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: RADIUS.xl,
     padding: 16,
     alignItems: 'center',
     ...SHADOW.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   launchIconBox: {
     width: 48,
@@ -1324,7 +1327,7 @@ const styles = StyleSheet.create({
   launchName: {
     fontSize: 10,
     fontWeight: '900',
-    color: COLORS.text,
+    color: colors.text,
     textAlign: 'center',
   },
   sysStatusRow: {
@@ -1334,22 +1337,22 @@ const styles = StyleSheet.create({
   sysCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: RADIUS.xl,
     padding: 20,
     gap: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   sysTitle: {
     fontSize: 14,
     fontWeight: '900',
-    color: COLORS.text,
+    color: colors.text,
   },
   sysSub: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.textSub,
+    color: colors.textSub,
     marginTop: 2,
   },
   // --- Account Menu Modal Styles ---
@@ -1359,7 +1362,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   menuSheet: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
     padding: 24,
@@ -1368,7 +1371,7 @@ const styles = StyleSheet.create({
   sheetHandle: {
     width: 40,
     height: 4,
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.border,
     borderRadius: RADIUS.full,
     alignSelf: 'center',
     marginBottom: 20,
@@ -1376,7 +1379,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 18,
     fontWeight: '900',
-    color: COLORS.text,
+    color: colors.text,
     marginBottom: 20,
   },
   sheetItem: {
@@ -1384,7 +1387,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: colors.border,
     gap: 16,
   },
   sheetIconBox: {
@@ -1397,23 +1400,23 @@ const styles = StyleSheet.create({
   sheetItemTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: COLORS.text,
+    color: colors.text,
   },
   sheetItemSub: {
     fontSize: 11,
-    color: COLORS.textSub,
+    color: colors.textSub,
     marginTop: 2,
   },
   sheetCloseBtn: {
     marginTop: 20,
     padding: 16,
     borderRadius: RADIUS.lg,
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
     alignItems: 'center',
   },
   sheetCloseText: {
     fontSize: 14,
     fontWeight: '800',
-    color: COLORS.textSub,
+    color: colors.textSub,
   },
 });
