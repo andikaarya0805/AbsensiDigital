@@ -8,7 +8,8 @@ import {
   Calendar, Clock, MapPin, ShieldCheck, ShieldAlert, 
   LogOut, User, Moon, Sun, ChevronRight, QrCode, 
   Scan, RefreshCw, Maximize2, X, Users, BookOpen,
-  CheckCircle2, Download, GraduationCap, Megaphone
+  CheckCircle2, Download, GraduationCap, Megaphone,
+  CalendarCheck, FileText
 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -518,10 +519,11 @@ export default function HomeScreen() {
                 { name: 'Data Guru', icon: User, color: '#3B82F6', route: '/admin/teachers' },
                 { name: 'Data Siswa', icon: GraduationCap, color: '#10B981', route: '/admin/students' },
                 { name: 'Data Kelas', icon: BookOpen, color: '#F59E0B', route: '/admin/classes' },
-                { name: 'Mata Pelajaran', icon: Clock, color: '#6366F1', route: '/admin/subjects' },
+                { name: 'Mata Pelajaran', icon: FileText, color: '#6366F1', route: '/admin/subjects' },
                 { name: 'Broadcast', icon: Megaphone, color: '#EC4899', route: '/admin/broadcast' },
                 { name: 'Radius & Lokasi', icon: MapPin, color: '#F59E0B', route: '/admin/settings' },
-                { name: 'Laporan', icon: Download, color: '#8B5CF6', route: '/history' },
+                { name: 'Jadwal Pelajaran', icon: CalendarCheck, color: '#8B5CF6', route: '/schedules' },
+                { name: 'Laporan Presensi', icon: FileText, color: '#6366F1', route: '/history' },
               ].map((item, idx) => (
                 <TouchableOpacity 
                   key={idx} 

@@ -9,6 +9,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 export default function BroadcastScreen() {
     const router = useRouter();
     const [message, setMessage] = useState('');
+    const [target, setTarget] = useState<'all' | 'students' | 'teachers'>('all');
     const [isSending, setIsSending] = useState(false);
 
     const handleSend = async () => {
@@ -17,9 +18,10 @@ export default function BroadcastScreen() {
             return;
         }
 
+        const targetName = target === 'all' ? 'SELURUH' : target === 'students' ? 'SELURUH SISWA' : 'SELURUH GURU';
         Alert.alert(
             'Konfirmasi Broadcast',
-            'Pesan akan dikirimkan ke SELURUH pengguna Telegram yang terhubung. Lanjutkan?',
+            `Pesan akan dikirimkan ke ${targetName} pengguna Telegram yang terhubung. Lanjutkan?`,
             [
                 { text: 'Batal', style: 'cancel' },
                 { 
@@ -30,7 +32,7 @@ export default function BroadcastScreen() {
                             const response = await fetch(`${API_URL}/api/admin/broadcast`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ message })
+                                body: JSON.stringify({ message, target })
                             });
 
                             const result = await response.json();
@@ -73,7 +75,24 @@ export default function BroadcastScreen() {
             >
                 <ScrollView contentContainerStyle={styles.content}>
                     <View style={styles.card}>
-                        <Text style={styles.label}>PESAN BROADCAST</Text>
+                        <Text style={styles.label}>TARGET PENERIMA</Text>
+                        <View style={styles.targetRow}>
+                            {[
+                                { id: 'all', label: 'Semua' },
+                                { id: 'students', label: 'Siswa' },
+                                { id: 'teachers', label: 'Guru' }
+                            ].map((t) => (
+                                <TouchableOpacity 
+                                    key={t.id}
+                                    style={[styles.targetBtn, target === t.id && styles.targetBtnActive]}
+                                    onPress={() => setTarget(t.id as any)}
+                                >
+                                    <Text style={[styles.targetText, target === t.id && styles.targetTextActive]}>{t.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <Text style={[styles.label, { marginTop: 20 }]}>PESAN BROADCAST</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="Tulis pengumuman di sini..."
@@ -233,5 +252,32 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: COLORS.danger,
         fontWeight: '700',
+    },
+    targetRow: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    targetBtn: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: RADIUS.lg,
+        backgroundColor: COLORS.bg,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    targetBtnActive: {
+        backgroundColor: COLORS.primary,
+        borderColor: COLORS.primary,
+        ...SHADOW.primary,
+    },
+    targetText: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: COLORS.textSub,
+    },
+    targetTextActive: {
+        color: '#fff',
     }
 });

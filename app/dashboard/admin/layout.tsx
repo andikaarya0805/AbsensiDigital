@@ -34,7 +34,7 @@ const menuItems = [
     { name: 'Data Siswa', icon: GraduationCap, href: '/dashboard/admin/students' },
     { name: 'Data Kelas', icon: BookOpen, href: '/dashboard/admin/classes' },
     { name: 'Mata Pelajaran', icon: FileText, href: '/dashboard/admin/subjects' },
-    { name: 'Jadwal Kuliah', icon: CalendarCheck, href: '/dashboard/admin/schedules' },
+    { name: 'Jadwal Pelajaran', icon: CalendarCheck, href: '/dashboard/admin/schedules' },
     { name: 'Laporan Presensi', icon: FileText, href: '/dashboard/admin/reports' },
     { name: 'Broadcast Bot', icon: Megaphone, href: '/dashboard/admin/broadcast' },
     { name: 'Radius & Lokasi', icon: MapPin, href: '/dashboard/admin/settings' },
