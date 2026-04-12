@@ -523,7 +523,6 @@ export default function HomeScreen() {
                 { name: 'Broadcast', icon: Megaphone, color: '#EC4899', route: '/admin/broadcast' },
                 { name: 'Radius & Lokasi', icon: MapPin, color: '#F59E0B', route: '/admin/settings' },
                 { name: 'Jadwal Pelajaran', icon: CalendarCheck, color: '#8B5CF6', route: '/schedules' },
-                { name: 'Laporan Presensi', icon: FileText, color: '#6366F1', route: '/history' },
               ].map((item, idx) => (
                 <TouchableOpacity 
                   key={idx} 
