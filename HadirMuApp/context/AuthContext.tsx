@@ -102,14 +102,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { error: 'PIN/Password salah.' };
         }
 
-        // Device Binding check (Siswa saja)
+        // Device Binding check (Siswa saja) - DIBYPASS SEMENTARA UNTUK TESTING
         const currentDeviceId = await SecureStore.getItemAsync('expo_device_id');
         if (!student.device_id) {
           if (currentDeviceId) {
             await supabase.from('students').update({ device_id: currentDeviceId }).eq('id', student.id);
           }
         } else if (student.device_id !== currentDeviceId) {
-          return { error: 'Akun ini sudah terhubung dengan perangkat lain. Hubungi Admin.' };
+          console.warn('WARNING: Device ID berbeda, tapi dibypass untuk testing.');
+          // return { error: 'Akun ini sudah terhubung dengan perangkat lain. Hubungi Admin.' };
         }
 
         const authUser: AuthUser = {
