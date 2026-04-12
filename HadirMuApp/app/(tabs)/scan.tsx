@@ -7,7 +7,9 @@ import { COLORS, RADIUS } from '../../constants/theme';
 import { validateQRPayload } from '../../lib/qr';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { Scan, X, MapPin } from 'lucide-react-native';
+import { Scan, X, MapPin, Loader2 } from 'lucide-react-native';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -57,25 +59,30 @@ export default function ScanScreen() {
         return;
       }
 
-      // 2. Geofencing Check (Simulasi radius 100m)
-      const location = await Location.getCurrentPositionAsync({});
-      // Note: Di production, bandingkan dengan koordinat sekolah dari database
-      // Untuk demo, kita izinkan semua lokasi
-      console.log('User Location:', location.coords.latitude, location.coords.longitude);
+      // 2. Geofencing & Record via Centralized API
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      console.log('Mobile Location:', location.coords.latitude, location.coords.longitude);
 
-      // 3. Simpan Kehadiran ke Supabase
-      const { error } = await supabase
-        .from('attendance')
-        .insert({
-          student_id: user?.id,
-          class_id: validation.classId,
-          status_type: 'hadir',
-          timestamp: new Date().toISOString()
-        });
+      const response = await fetch(`${API_URL}/api/attendance/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          qrPayload: data,
+          studentId: user?.id,
+          coords: {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude
+          }
+        })
+      });
 
-      if (error) throw error;
+      const result = await response.json();
 
-      Alert.alert('Berhasil', 'Absensi kamu sudah tercatat. Selamat belajar!', [
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal melakukan absensi');
+      }
+
+      Alert.alert('Berhasil', result.message || 'Absensi kamu sudah tercatat. Selamat belajar!', [
         { text: 'OK', onPress: () => router.push('/(tabs)/home') }
       ]);
 

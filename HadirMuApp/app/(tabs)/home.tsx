@@ -8,7 +8,7 @@ import {
   Calendar, Clock, MapPin, ShieldCheck, ShieldAlert, 
   LogOut, User, Moon, Sun, ChevronRight, QrCode, 
   Scan, RefreshCw, Maximize2, X, Users, BookOpen,
-  CheckCircle2, Download, GraduationCap
+  CheckCircle2, Download, GraduationCap, Megaphone
 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -27,6 +27,8 @@ const STATUS_OPTIONS = [
   { value: 'sakit', label: 'SAKIT', color: COLORS.warning },
   { value: 'alpha', label: 'ALPHA', color: COLORS.danger },
 ];
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -260,6 +262,50 @@ export default function HomeScreen() {
     }
   };
 
+  const handleExportMonthly = async () => {
+    if (!selectedClass || !sessionName) {
+      Alert.alert('Peringatan', 'Pilih kelas dan mata pelajaran terlebih dahulu!');
+      return;
+    }
+
+    setRefreshing(true);
+    try {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      const { data: logs } = await supabase
+          .from('attendance')
+          .select('student_id, status_type, timestamp')
+          .eq('session_name', sessionName)
+          .gte('timestamp', startOfMonth.toISOString())
+          .lte('timestamp', endOfMonth.toISOString());
+
+      let csv = `No,Nama Siswa,NIS,Hadir,Izin,Sakit,Alpha,Total Sesi\n`;
+      
+      classStudents.forEach((student, index) => {
+        const sLogs = logs?.filter(l => l.student_id === student.id) || [];
+        const hadir = sLogs.filter(l => l.status_type === 'hadir').length;
+        const izin = sLogs.filter(l => l.status_type === 'izin').length;
+        const sakit = sLogs.filter(l => l.status_type === 'sakit').length;
+        const alpha = sLogs.filter(l => l.status_type === 'alpha').length;
+
+        csv += `${index + 1},"${student.full_name}",${student.nis},${hadir},${izin},${sakit},${alpha},${sLogs.length}\n`;
+      });
+
+      const monthName = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(now);
+      const filename = `Rekap_Bulanan_${selectedClass}_${monthName}.csv`;
+      const filepath = Paths.join(Paths.document.uri, filename);
+
+      await writeAsStringAsync(filepath, csv, { encoding: 'utf8' });
+      await shareAsync(filepath);
+    } catch (e: any) {
+      Alert.alert('Error', 'Gagal rekap bulanan: ' + e.message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // --- Student Logic ---
   const handleScan = async ({ data }: { data: string }) => {
     if (scanStatus === 'success' || scanStatus === 'scanning') return;
@@ -272,19 +318,27 @@ export default function HomeScreen() {
           throw new Error('Perangkat ini tidak terdaftar untuk akun Anda. Gunakan perangkat asli atau hubungi Admin.');
       }
 
-      const validation = validateQRPayload(data);
-      if (!validation.valid) throw new Error('QR Code tidak valid!');
+      // GEOLOCATION & UNIFIED API
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
 
-      // lib/qr.ts returns classId which we use as sessionName in attendance table if it follows the format
-      const { error } = await supabase.from('attendance').insert({
-        student_id: user?.id,
-        status_type: 'hadir',
-        session_name: validation.classId || 'DEFAULT',
+      const response = await fetch(`${API_URL}/api/attendance/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          qrPayload: data,
+          studentId: user?.id,
+          coords: {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude
+          }
+        })
       });
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Gagal absensi');
+
       setScanStatus('success');
-      setScanMessage('Presensi berhasil dicatat!');
+      setScanMessage(result.message || 'Presensi berhasil dicatat!');
       fetchInitialData();
     } catch (err: any) {
       setScanStatus('error');
@@ -465,7 +519,8 @@ export default function HomeScreen() {
                 { name: 'Data Siswa', icon: GraduationCap, color: '#10B981', route: '/admin/students' },
                 { name: 'Data Kelas', icon: BookOpen, color: '#F59E0B', route: '/admin/classes' },
                 { name: 'Mata Pelajaran', icon: Clock, color: '#6366F1', route: '/admin/subjects' },
-                { name: 'Jadwal Kuliah', icon: Calendar, color: '#EC4899', route: '/schedule' },
+                { name: 'Broadcast', icon: Megaphone, color: '#EC4899', route: '/admin/broadcast' },
+                { name: 'Radius & Lokasi', icon: MapPin, color: '#F59E0B', route: '/admin/settings' },
                 { name: 'Laporan', icon: Download, color: '#8B5CF6', route: '/history' },
               ].map((item, idx) => (
                 <TouchableOpacity 
@@ -562,10 +617,16 @@ export default function HomeScreen() {
             <View style={styles.tableHeader}>
                <Users size={18} color={COLORS.primary} />
                <Text style={styles.tableTitle}>Rekap Absensi</Text>
-               <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
-                  <Download size={14} color="#fff" />
-                  <Text style={styles.exportText}>Export</Text>
-               </TouchableOpacity>
+               <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
+                      <Download size={14} color="#fff" />
+                      <Text style={styles.exportText}>Harian</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.exportBtn, { backgroundColor: COLORS.info }]} onPress={handleExportMonthly}>
+                      <Calendar size={14} color="#fff" />
+                      <Text style={styles.exportText}>Bulanan</Text>
+                  </TouchableOpacity>
+               </View>
             </View>
 
             <View style={styles.cardTable}>

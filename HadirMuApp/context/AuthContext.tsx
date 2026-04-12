@@ -86,11 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return {};
       }
 
-      // 2. Cek tabel Students
       const { data: student, error: studentErr } = await supabase
         .from('students')
         .select('*, classes(name)')
-        .or(`recovery_email.eq.${input},nis.eq.${input}`)
+        .eq('nis', input)
         .maybeSingle();
       
       if (studentErr && studentErr.code !== 'PGRST116') {

@@ -125,6 +125,28 @@ export default function StudentDashboard() {
     };
 
     /**
+     * Fetches current GPS coordinates.
+     */
+    const getCurrentLocation = (): Promise<{ lat: number; lng: number }> => {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('Browser Anda tidak mendukung lokasi (GPS)'));
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                (err) => {
+                    let msg = 'Gagal mengambil lokasi.';
+                    if (err.code === 1) msg = 'Harap izinkan akses lokasi (GPS) untuk presensi.';
+                    reject(new Error(msg));
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        });
+    };
+
+    /**
      * Processes the scanned QR code content.
      * Validates: Format, Secret, Timestamp, and Device ID.
      */
@@ -134,7 +156,7 @@ export default function StudentDashboard() {
             return;
         }
 
-        if (status === 'success') return;
+        if (status === 'success' || status === 'scanning') return;
         if (!user) {
             setStatus('error');
             setMessage('Session tidak ditemukan. Silakan login ulang.');
@@ -142,89 +164,61 @@ export default function StudentDashboard() {
         }
 
         setStatus('scanning');
+        setMessage('Sedang memproses...');
 
         try {
-            // SECURITY CHECK: Web Device Identity (uses web_device_id for browser)
+            // 1. Get Location
+            let location = { lat: 0, lng: 0 };
+            try {
+                location = await getCurrentLocation();
+            } catch (locErr: any) {
+                throw locErr;
+            }
+
+            // 2. Security Check: Web Device Identity
             const currentDeviceId = getDeviceId();
             if (profile?.web_device_id && profile.web_device_id !== currentDeviceId) {
-                throw new Error('Perangkat ini tidak terdaftar untuk akun Anda. Gunakan browser asli atau hubungi Admin.');
+                throw new Error('Perangkat ini tidak terdaftar untuk akun Anda.');
             }
 
-            // QR Security Configuration (must be synced with teacher settings)
-            const QR_REFRESH_SECONDS = 30;
-            const QR_SECRET = process.env.NEXT_PUBLIC_QR_SECRET || 'FALLBACK_SECRET';
-
-            /**
-             * Expected QR Format: HADIR_SESSION_{timestamp}_{secret}_{sessionName}
-             */
+            // 3. QR Format Pre-check (Get Session Name)
             const parts = decodedText.split('_');
-            console.log('Scanned QR:', decodedText);
-
-            if (parts.length < 4 || parts[0] !== 'HADIR' || parts[1] !== 'SESSION') {
-                throw new Error('QR Code tidak valid! (format salah)');
-            }
-
-            const scannedTimestamp = parseInt(parts[2]);
-            const scannedSecret = parts[3];
             const sessionName = parts.length >= 5 ? parts.slice(4).join('_') : 'DEFAULT';
 
-            // Validate secret
-            if (scannedSecret !== QR_SECRET) {
-                throw new Error('QR Code tidak valid!');
-            }
-
-            // Validate timestamp (check if within valid window - allow 1 window tolerance)
-            const currentTimestamp = Math.floor(Date.now() / (QR_REFRESH_SECONDS * 1000));
-            if (Math.abs(scannedTimestamp - currentTimestamp) > 1) {
-                throw new Error('QR Code sudah kadaluarsa! Minta guru untuk refresh QR.');
-            }
-
-            // RATE LIMITING: Check if already scanned this session today
-            const today = new Date().toISOString().split('T')[0];
-            const { data: existingAttendance } = await supabase
-                .from('attendance')
-                .select('id')
-                .eq('student_id', user.id)
-                .eq('session_name', sessionName)
-                .gte('timestamp', `${today}T00:00:00`)
-                .lte('timestamp', `${today}T23:59:59`)
-                .single();
-
-            if (existingAttendance) {
-                throw new Error('Kamu sudah absen untuk sesi ini hari ini!');
-            }
-
-            // Submit Attendance
-            console.log("Submitting attendance for:", user.id);
-            const { data, error: attError } = await supabase
-                .from('attendance')
-                .insert({
-                    student_id: user.id,
-                    status_type: 'hadir',
-                    session_name: sessionName
+            // 4. Call Backend API (Centralized logic for geofencing, secret, and notification)
+            const response = await fetch('/api/attendance/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    studentId: user.id,
+                    sessionName: sessionName,
+                    lat: location.lat,
+                    lng: location.lng,
+                    qrText: decodedText
                 })
-                .select();
+            });
 
-            if (attError) {
-                console.error("Attendance Insert Error:", attError);
-                throw attError;
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Gagal mencatat presensi');
             }
 
-            console.log("Attendance recorded:", data);
             setStatus('success');
-            setMessage('Presensi berhasil dicatat!');
+            setMessage(result.message || 'Presensi berhasil dicatat!');
+            showToast("Presensi Berhasil!", "success");
+
         } catch (err: any) {
             console.error("HandleScan Error:", err.message);
             setStatus('error');
             setMessage(err.message);
 
-            // Auto-reset after 3 seconds to allow scanning again
+            // Auto-reset after 3 seconds
             setTimeout(() => {
                 setStatus('idle');
-                window.location.reload(); // Reload to reset scanner
-            }, 3000);
+            }, 5000);
         }
-    }, [user, status, supabase, isVerified]);
+    }, [user, status, profile, isVerified]);
 
     if (!profile) return <div className="p-8 text-center text-slate-500">Loading...</div>;
 

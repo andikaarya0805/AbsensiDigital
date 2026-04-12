@@ -8,11 +8,10 @@ const supabase = createClient(
 
 export async function POST(req: Request) {
     try {
-        const { id, full_name, whatsapp_number } = await req.json();
+        const { id, full_name } = await req.json();
 
         const updateData: any = {};
         if (full_name !== undefined) updateData.full_name = full_name;
-        if (whatsapp_number !== undefined) updateData.whatsapp_number = whatsapp_number;
 
         const { data, error } = await supabase
             .from('teachers')

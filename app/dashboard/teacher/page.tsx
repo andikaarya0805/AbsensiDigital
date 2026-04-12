@@ -18,9 +18,13 @@ import {
     AlertCircle,
     User,
     Moon,
-    Sun
+    Sun,
+    FileText,
+    Loader2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useToast } from '@/components/Toast';
 import Link from 'next/link';
 import { useTheme } from '@/components/ThemeProvider';
@@ -342,6 +346,116 @@ export default function TeacherDashboard() {
         showToast(`File ${fileName} berhasil diunduh!`, 'success');
     };
 
+    /**
+     * Exports current daily attendance to a professional PDF.
+     */
+    const exportToPDF = () => {
+        if (!selectedClass || classStudents.length === 0) {
+            showToast('Pilih kelas terlebih dahulu!', 'warning');
+            return;
+        }
+
+        const doc = new jsPDF();
+        
+        // Header
+        doc.setFontSize(18);
+        doc.text('LAPORAN PRESENSI HARIAN', 14, 22);
+        
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Mata Pelajaran: ${sessionName || 'Umum'}`, 14, 32);
+        doc.text(`Kelas: ${selectedClass}`, 14, 38);
+        doc.text(`Tanggal: ${selectedDate}`, 14, 44);
+        
+        // Table
+        const tableData = classStudents.map((s, i) => {
+            const status = studentStatuses[s.id] || 'alpha';
+            const opt = STATUS_OPTIONS.find(o => o.value === status) || STATUS_OPTIONS[3];
+            return [
+                i + 1,
+                s.full_name,
+                s.nis,
+                opt.label
+            ];
+        });
+
+        autoTable(doc, {
+            startY: 50,
+            head: [['No', 'Nama Siswa', 'NIS', 'Status']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: { fillColor: [37, 99, 235], fontSize: 10 },
+            styles: { fontSize: 9 }
+        });
+
+        doc.save(`Presensi_${selectedClass}_${selectedDate}.pdf`);
+        showToast("PDF berhasil diunduh!", "success");
+    };
+
+    /**
+     * Generates a monthly recap by fetching data for the entire month for the selected class/subject.
+     */
+    const [exportingMonthly, setExportingMonthly] = useState(false);
+    
+    const exportMonthlyRecap = async () => {
+        if (!selectedClass || !sessionName) {
+            showToast('Pilih kelas dan mata pelajaran terlebih dahulu!', 'warning');
+            return;
+        }
+
+        setExportingMonthly(true);
+        try {
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+            const { data: logs, error } = await supabase
+                .from('attendance')
+                .select('student_id, status_type, timestamp')
+                .eq('session_name', sessionName)
+                .gte('timestamp', startOfMonth.toISOString())
+                .lte('timestamp', endOfMonth.toISOString());
+
+            if (error) throw error;
+
+            // Process data: count per student
+            const recapData = classStudents.map((student, index) => {
+                const sLogs = logs?.filter(l => l.student_id === student.id) || [];
+                const hadir = sLogs.filter(l => l.status_type === 'hadir').length;
+                const izin = sLogs.filter(l => l.status_type === 'izin').length;
+                const sakit = sLogs.filter(l => l.status_type === 'sakit').length;
+                const alpha = sLogs.filter(l => l.status_type === 'alpha').length;
+
+                return {
+                    'No': index + 1,
+                    'Nama Siswa': student.full_name,
+                    'NIS': student.nis,
+                    'Hadir': hadir,
+                    'Izin': izin,
+                    'Sakit': sakit,
+                    'Alpha': alpha,
+                    'Total Sesi': sLogs.length
+                };
+            });
+
+            // Export to Excel
+            const ws = XLSX.utils.json_to_sheet(recapData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Rekap Bulanan');
+            
+            const monthName = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(now);
+            const fileName = `Rekap_Bulanan_${selectedClass}_${monthName}.xlsx`;
+            
+            XLSX.writeFile(wb, fileName);
+            showToast(`Rekap Bulanan ${monthName} berhasil diunduh!`, 'success');
+
+        } catch (e: any) {
+            showToast('Gagal menarik data rekap: ' + e.message, 'error');
+        } finally {
+            setExportingMonthly(false);
+        }
+    };
+
     // Toggle Fullscreen
     const toggleFullscreen = () => {
         setIsFullscreen(!isFullscreen);
@@ -583,10 +697,27 @@ export default function TeacherDashboard() {
 
                                 <button
                                     onClick={exportToExcel}
-                                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-xl font-bold transition-colors shadow-lg shadow-emerald-200/50 dark:shadow-none"
+                                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors"
                                 >
                                     <Download className="h-4 w-4" />
                                     Export Excel
+                                </button>
+                                
+                                <button
+                                    onClick={exportToPDF}
+                                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors"
+                                >
+                                    <FileText className="h-4 w-4" />
+                                    Export PDF
+                                </button>
+
+                                <button
+                                    onClick={exportMonthlyRecap}
+                                    disabled={exportingMonthly}
+                                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                                >
+                                    {exportingMonthly ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
+                                    Rekap Bulanan
                                 </button>
                             </div>
                         </div>

@@ -1,13 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { sendTelegramMessage } from '@/lib/telegram';
 
 export async function POST(request: Request) {
     try {
-        const { whatsapp_number } = await request.json();
+        const { identifier } = await request.json();
 
-        if (!whatsapp_number) {
-            return NextResponse.json({ error: 'Nomor WhatsApp wajib diisi.' }, { status: 400 });
+        if (!identifier) {
+            return NextResponse.json({ error: 'NIS atau NIP wajib diisi.' }, { status: 400 });
         }
 
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -17,22 +17,22 @@ export async function POST(request: Request) {
         let user: any = null;
         let table: 'teachers' | 'students' = 'teachers';
 
-        // 1. Try finding in Teachers
+        // 1. Try finding in Teachers (by NIP or Email)
         const { data: teacher } = await supabaseAdmin
             .from('teachers')
-            .select('id, full_name')
-            .eq('whatsapp_number', whatsapp_number)
+            .select('id, full_name, telegram_chat_id')
+            .or(`nip.eq.${identifier},email.eq.${identifier}`)
             .maybeSingle();
 
         if (teacher) {
             user = teacher;
             table = 'teachers';
         } else {
-            // 2. Try finding in Students
+            // 2. Try finding in Students (by NIS)
             const { data: student } = await supabaseAdmin
                 .from('students')
-                .select('id, full_name')
-                .eq('whatsapp_number', whatsapp_number)
+                .select('id, full_name, telegram_chat_id')
+                .eq('nis', identifier)
                 .maybeSingle();
 
             if (student) {
@@ -42,7 +42,13 @@ export async function POST(request: Request) {
         }
 
         if (!user) {
-            return NextResponse.json({ error: 'Nomor WhatsApp tidak terdaftar di sistem.' }, { status: 404 });
+            return NextResponse.json({ error: 'Identitas tidak terdaftar di sistem.' }, { status: 404 });
+        }
+
+        if (!user.telegram_chat_id) {
+            return NextResponse.json({ 
+                error: 'Akun Anda belum terhubung ke Telegram. Silakan hubungi Admin untuk reset password atau hubungkan Telegram di profil terlebih dahulu.' 
+            }, { status: 403 });
         }
 
         // 3. Generate Token
@@ -61,18 +67,18 @@ export async function POST(request: Request) {
 
         if (updateError) throw updateError;
 
-        // 5. Send Notification via WhatsApp
+        // 5. Send Notification via Telegram
         const type = table === 'teachers' ? 'Password' : 'Password/PIN';
         const message = `🔐 *KODE VERIFIKASI HADIRMU*\n\n` +
-            `Halo ${user.full_name},\n` +
-            `Kode verifikasi untuk reset ${type} Anda adalah: *${token}*\n\n` +
+            `Halo *${user.full_name}*,\n` +
+            `Kode verifikasi untuk reset ${type} Anda adalah: \`${token}\`\n\n` +
             `Kode ini berlaku selama 1 jam. Jangan berikan kode ini kepada siapapun.`;
 
-        await sendWhatsAppMessage(whatsapp_number, message);
+        await sendTelegramMessage(user.telegram_chat_id, message);
 
         return NextResponse.json({
             success: true,
-            message: 'OTP berhasil dikirim ke WhatsApp.',
+            message: 'Kode verifikasi telah dikirim ke Telegram Anda.',
             role: table === 'teachers' ? 'teacher' : 'student'
         });
 

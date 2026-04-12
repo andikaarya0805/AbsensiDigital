@@ -36,8 +36,7 @@ function StudentsContent() {
         full_name: '',
         nis: '',
         class_id: '',
-        password: '123456',
-        recovery_email: ''
+        password: '123456'
     });
     const [isSaving, setIsSaving] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -90,7 +89,6 @@ function StudentsContent() {
             nis: formData.nis,
             class_id: formData.class_id || null,
             password: formData.password,
-            recovery_email: formData.recovery_email || null,
             role: 'student'
         };
 
@@ -114,7 +112,7 @@ function StudentsContent() {
             showToast(`Siswa berhasil ${editingStudent ? 'diupdate' : 'ditambahkan'}`, 'success');
             setShowModal(false);
             setEditingStudent(null);
-            setFormData({ full_name: '', nis: '', class_id: '', password: '123456', recovery_email: '' });
+            setFormData({ full_name: '', nis: '', class_id: '', password: '123456' });
             fetchData();
         }
         setIsSaving(false);
@@ -150,8 +148,7 @@ function StudentsContent() {
                 full_name: student.full_name || '',
                 nis: student.nis || '',
                 class_id: student.class_id || '',
-                password: student.password || '123456',
-                recovery_email: student.recovery_email || ''
+                password: student.password || '123456'
             });
         } else {
             setEditingStudent(null);
@@ -159,11 +156,46 @@ function StudentsContent() {
                 full_name: '',
                 nis: '',
                 class_id: classes.length > 0 ? classes[0].id : '',
-                password: '123456',
-                recovery_email: ''
+                password: '123456'
             });
         }
         setShowModal(true);
+    };
+
+    const handleResetDevice = async () => {
+        if (!editingStudent) return;
+        setIsSaving(true);
+        const { error } = await supabase
+            .from('students')
+            .update({ device_id: null, web_device_id: null })
+            .eq('id', editingStudent.id);
+        
+        setIsSaving(false);
+        if (error) {
+            showToast('Gagal mereset Device ID', 'error');
+        } else {
+            showToast('Device ID berhasil direset! Siswa kini bisa login dari perangkat manapun.', 'success');
+            setShowModal(false);
+            fetchData();
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (!editingStudent) return;
+        setIsSaving(true);
+        const { error } = await supabase
+            .from('students')
+            .update({ password: '123456' })
+            .eq('id', editingStudent.id);
+        
+        setIsSaving(false);
+        if (error) {
+            showToast('Gagal mereset Password', 'error');
+        } else {
+            showToast('Password berhasil direset ke 123456!', 'success');
+            setShowModal(false);
+            fetchData();
+        }
     };
 
     const filteredStudents = students.filter(s => {
@@ -248,7 +280,9 @@ function StudentsContent() {
                                                 </div>
                                                 <div>
                                                     <p className="font-bold text-slate-900 dark:text-white tracking-tight text-base">{student.full_name}</p>
-                                                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 mt-0.5 uppercase tracking-widest">{student.recovery_email || 'No email'}</p>
+                                                    <p className={`text-[10px] font-black mt-0.5 uppercase tracking-widest flex items-center gap-1 ${student.telegram_chat_id ? 'text-blue-500 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                        {student.telegram_chat_id ? '● TELEGRAM TERHUBUNG' : '○ TELEGRAM BELUM TERHUBUNG'}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </td>
@@ -375,19 +409,32 @@ function StudentsContent() {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-black dark:text-slate-200 uppercase tracking-widest ml-1">Email Pemulihan (Optional)</label>
-                                <div className="relative">
-                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                    <input
-                                        type="email"
-                                        placeholder="siswa@gmail.com"
-                                        value={formData.recovery_email}
-                                        onChange={(e) => setFormData({ ...formData, recovery_email: e.target.value })}
-                                        className="w-full pl-12 pr-5 py-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl text-sm font-bold text-black dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
-                                    />
+
+
+                            {editingStudent && (
+                                <div className="md:col-span-2 flex flex-col sm:flex-row gap-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 mt-2">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Siswa Susah Login?</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Gunakan opsi cepat ini untuk keluhan siswa terkunci device ID atau lupa password.</p>
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                        <button
+                                            type="button"
+                                            onClick={handleResetPassword}
+                                            className="px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 shadow-sm"
+                                        >
+                                            <Key className="w-4 h-4" /> Reset Password
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleResetDevice}
+                                            className="px-4 py-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 transition-all flex items-center gap-2 shadow-sm"
+                                        >
+                                            <AlertTriangle className="w-4 h-4" /> Reset Device ID
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             <div className="flex gap-4 pt-4 md:col-span-2">
                                 <button

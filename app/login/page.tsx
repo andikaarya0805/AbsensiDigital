@@ -48,7 +48,7 @@ export default function LoginPage() {
             /**
              * Unified Authentication Strategy:
              * 1. Search the 'teachers' table for Email or NIP.
-             * 2. Search the 'students' table for NIS or Recovery Email.
+             * 2. Search the 'students' table for NIS.
              * 3. Validate passwords locally (for students) or via Supabase (for teachers).
              */
 
@@ -63,7 +63,7 @@ export default function LoginPage() {
             const { data: student } = await supabase
                 .from('students')
                 .select('*')
-                .or(`recovery_email.eq.${input},nis.eq.${input}`)
+                .eq('nis', input)
                 .maybeSingle();
 
             if (teacher) {

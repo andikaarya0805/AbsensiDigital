@@ -7,9 +7,10 @@ import Link from 'next/link';
 
 export default function ForgotPasswordPage() {
     const [step, setStep] = useState<'request' | 'verify'>('request');
-    const [whatsappNumber, setWhatsappNumber] = useState('');
+    const [identifier, setIdentifier] = useState('');
     const [inputToken, setInputToken] = useState('');
     const [newPassword, setNewPassword] = useState('');
+    const [role, setRole] = useState<'teacher' | 'student' | null>(null);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -31,12 +32,13 @@ export default function ForgotPasswordPage() {
             const res = await fetch('/api/auth/request-reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ whatsapp_number: whatsappNumber })
+                body: JSON.stringify({ identifier })
             });
 
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Gagal mengirim permintaan.');
 
+            setRole(data.role);
             setStep('verify');
         } catch (err: any) {
             setError(err.message);
@@ -62,7 +64,7 @@ export default function ForgotPasswordPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    whatsapp_number: whatsappNumber,
+                    identifier,
                     token: inputToken,
                     newPassword
                 })
@@ -92,18 +94,18 @@ export default function ForgotPasswordPage() {
                 </Link>
 
                 <div className="text-center mb-8">
-                    <div className="bg-green-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <KeyRound className="h-8 w-8 text-green-600" />
+                    <div className="bg-blue-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <KeyRound className="h-8 w-8 text-blue-600" />
                     </div>
                     <h1 className="text-2xl font-bold text-slate-900">Lupa Password?</h1>
 
                     {step === 'request' ? (
                         <p className="text-slate-500 text-sm mt-2">
-                            Masukkan Nomor WhatsApp Anda. Kode OTP reset akan dikirimkan langsung via <strong>WhatsApp</strong>.
+                            Masukkan NIS (Siswa) atau NIP/Email (Guru). Kode OTP reset akan dikirimkan langsung via <strong>Telegram</strong>.
                         </p>
                     ) : (
                         <p className="text-slate-500 text-sm mt-2">
-                            Masukkan Kode OTP dari WhatsApp & Password Baru Anda.
+                            Masukkan Kode OTP dari Telegram & Password Baru Anda.
                         </p>
                     )}
                 </div>
@@ -121,13 +123,13 @@ export default function ForgotPasswordPage() {
                         {step === 'request' ? (
                             <form onSubmit={handleRequest} className="space-y-6">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Nomor WhatsApp</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Identitas (NIS / NIP / Email)</label>
                                     <input
-                                        type="tel"
-                                        value={whatsappNumber}
-                                        onChange={(e) => setWhatsappNumber(e.target.value)}
-                                        placeholder="Contoh: 08123456789"
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-green-500 focus:outline-none text-black transition-all"
+                                        type="text"
+                                        value={identifier}
+                                        onChange={(e) => setIdentifier(e.target.value)}
+                                        placeholder="Masukkan NIS / NIP / Email Anda"
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none text-black transition-all"
                                         required
                                     />
                                 </div>
@@ -142,11 +144,11 @@ export default function ForgotPasswordPage() {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-green-100"
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-blue-100"
                                 >
                                     {loading ? 'Mengirim...' : (
                                         <>
-                                            Kirim OTP WhatsApp
+                                            Kirim Kode ke Telegram
                                             <ArrowRight className="h-5 w-5" />
                                         </>
                                     )}
@@ -154,7 +156,7 @@ export default function ForgotPasswordPage() {
                             </form>
                         ) : (
                             <form onSubmit={handleVerifyAndReset} className="space-y-6 animate-in slide-in-from-right-8">
-                                <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-xs text-green-800 mb-4">
+                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-800 mb-4">
                                     <p className="font-bold mb-1">Aturan Password Baru:</p>
                                     <ul className="list-disc ml-4 space-y-0.5">
                                         <li>Minimal 6 karakter</li>
@@ -165,14 +167,14 @@ export default function ForgotPasswordPage() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Kode OTP</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Kode OTP Telegram</label>
                                     <div className="relative">
                                         <input
                                             type="text"
                                             value={inputToken}
                                             onChange={(e) => setInputToken(e.target.value)}
                                             placeholder="6 digit kode"
-                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-green-500 focus:outline-none text-lg font-bold tracking-widest text-center"
+                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none text-lg font-bold tracking-widest text-center"
                                             maxLength={6}
                                             required
                                         />
@@ -186,7 +188,7 @@ export default function ForgotPasswordPage() {
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
                                         placeholder="Min. 6 karakter (Kriteria khusus)"
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-green-500 focus:outline-none text-black"
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none text-black"
                                         required
                                     />
                                 </div>
@@ -201,7 +203,7 @@ export default function ForgotPasswordPage() {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-green-100"
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-blue-100"
                                 >
                                     {loading ? 'Menyimpan...' : 'Simpan Password Baru'}
                                 </button>

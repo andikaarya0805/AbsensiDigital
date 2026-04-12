@@ -3,17 +3,13 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
     try {
-        const { whatsapp_number, token, newPassword } = await request.json();
+        const { identifier, token, newPassword } = await request.json();
 
-        if (!whatsapp_number || !token || !newPassword) {
+        if (!identifier || !token || !newPassword) {
             return NextResponse.json({ error: 'Data tidak lengkap.' }, { status: 400 });
         }
 
         // 1. Password Complexity Validation
-        // - Minimal 6 characters
-        // - Starts with Uppercase
-        // - Contains number
-        // - Contains special character
         if (newPassword.length < 6) {
             return NextResponse.json({ error: 'Password minimal 6 karakter.' }, { status: 400 });
         }
@@ -34,23 +30,22 @@ export async function POST(request: Request) {
         let user: any = null;
         let table: 'teachers' | 'students' = 'teachers';
 
-        // 2. Find User and Verify Token
-        // Check Teachers
+        // 2. Find User (Check Teachers first by NIP or Email)
         const { data: teacher } = await supabaseAdmin
             .from('teachers')
             .select('*')
-            .eq('whatsapp_number', whatsapp_number)
+            .or(`nip.eq.${identifier},email.eq.${identifier}`)
             .maybeSingle();
 
         if (teacher) {
             user = teacher;
             table = 'teachers';
         } else {
-            // Check Students
+            // Check Students by NIS
             const { data: student } = await supabaseAdmin
                 .from('students')
                 .select('*')
-                .eq('whatsapp_number', whatsapp_number)
+                .eq('nis', identifier)
                 .maybeSingle();
 
             if (student) {
@@ -60,7 +55,7 @@ export async function POST(request: Request) {
         }
 
         if (!user) {
-            return NextResponse.json({ error: 'User tidak ditemukan.' }, { status: 404 });
+            return NextResponse.json({ error: 'Identitas tidak ditemukan.' }, { status: 404 });
         }
 
         if (user.reset_token !== token) {

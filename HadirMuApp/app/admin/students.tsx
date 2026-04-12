@@ -22,8 +22,7 @@ export default function AdminStudentsScreen() {
         full_name: '',
         nis: '',
         class_id: '',
-        password: '123456',
-        recovery_email: ''
+        password: '123456'
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -71,7 +70,6 @@ export default function AdminStudentsScreen() {
                 nis: formData.nis,
                 class_id: formData.class_id,
                 password: formData.password,
-                recovery_email: formData.recovery_email || null,
                 role: 'student'
             };
 
@@ -132,8 +130,7 @@ export default function AdminStudentsScreen() {
                 full_name: student.full_name || '',
                 nis: student.nis || '',
                 class_id: student.class_id || '',
-                password: student.password || '123456',
-                recovery_email: student.recovery_email || ''
+                password: student.password || '123456'
             });
         } else {
             setEditingStudent(null);
@@ -141,8 +138,7 @@ export default function AdminStudentsScreen() {
                 full_name: '',
                 nis: '',
                 class_id: classes.length > 0 ? classes[0].id : '',
-                password: '123456',
-                recovery_email: ''
+                password: '123456'
             });
         }
         setShowModal(true);
@@ -234,12 +230,6 @@ export default function AdminStudentsScreen() {
                                     </TouchableOpacity>
                                 </View>
                             </View>
-                            {student.recovery_email && (
-                                <View style={styles.cardFooter}>
-                                    <Mail size={12} color={COLORS.textSub} />
-                                    <Text style={styles.footerText}>{student.recovery_email}</Text>
-                                </View>
-                            )}
                         </View>
                     ))
                 ) : (
@@ -325,18 +315,6 @@ export default function AdminStudentsScreen() {
                                 />
                             </View>
 
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>EMAIL PEMULIHAN (OPSIONAL)</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="siswa@gmail.com"
-                                    placeholderTextColor={COLORS.border}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                    value={formData.recovery_email}
-                                    onChangeText={(text) => setFormData({...formData, recovery_email: text})}
-                                />
-                            </View>
                         </ScrollView>
 
                         <View style={styles.modalFooter}>

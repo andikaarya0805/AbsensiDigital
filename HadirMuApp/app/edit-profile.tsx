@@ -14,7 +14,6 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState({
     full_name: '',
-    recovery_email: '',
     password: '',
     avatar_url: ''
   });
@@ -34,7 +33,6 @@ export default function EditProfileScreen() {
     if (data) {
       setProfile({
         full_name: data.full_name || '',
-        recovery_email: data.recovery_email || '',
         password: data.password || '',
         avatar_url: data.avatar_url || ''
       });
@@ -93,7 +91,6 @@ export default function EditProfileScreen() {
         .from(user?.role === 'student' ? 'students' : 'teachers')
         .update({
           full_name: profile.full_name,
-          recovery_email: profile.recovery_email,
           password: profile.password,
           avatar_url: profile.avatar_url
         })
@@ -125,7 +122,7 @@ export default function EditProfileScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profil</Text>
         <TouchableOpacity onPress={handleSave} disabled={saving}>
-          {saving ? <ActivityIndicator size="small" color={COLORS.primary} /> : <Save size={24} color={COLORS.primary} />}
+          {saving ? <ActivityIndicator size="small" color={COLORS.primary} /> : <Text style={{color: COLORS.primary, fontWeight: 'bold'}}>Simpan</Text>}
         </TouchableOpacity>
       </View>
 
@@ -159,21 +156,6 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>EMAIL PEMULIHAN</Text>
-            <View style={styles.inputWrapper}>
-              <Mail size={20} color={COLORS.textSub} />
-              <TextInput
-                style={styles.input}
-                value={profile.recovery_email}
-                onChangeText={(text) => setProfile({ ...profile, recovery_email: text })}
-                placeholder="email@sekolah.com"
-                placeholderTextColor={COLORS.textSub}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>PASSWORD</Text>

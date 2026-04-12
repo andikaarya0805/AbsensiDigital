@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 /**
  * Direct Database Access Client.
  * Uses SERVICE_ROLE_KEY to bypass Row Level Security (RLS) for 
- * administrative profile updates (e.g. changing passwords/whatsapp).
+ * administrative profile updates (e.g. changing passwords).
  */
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,7 +13,7 @@ const supabase = createClient(
 
 export async function POST(req: Request) {
     try {
-        const { id, full_name, password, whatsapp_number, avatar_url } = await req.json();
+        const { id, full_name, password, avatar_url } = await req.json();
 
         console.log('Update Profile Request for ID:', id);
         console.log('New Password length:', password?.length);
@@ -22,7 +22,6 @@ export async function POST(req: Request) {
         const updateData: any = {};
         if (full_name !== undefined) updateData.full_name = full_name;
         if (password !== undefined) updateData.password = password;
-        if (whatsapp_number !== undefined) updateData.whatsapp_number = whatsapp_number;
         if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
 
         console.log('Update Data:', updateData);

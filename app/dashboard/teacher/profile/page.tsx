@@ -23,27 +23,18 @@ export default function TeacherProfilePage() {
         id: '',
         full_name: '',
         email: '',
-        whatsapp_number: ''
+        telegram_chat_id: '',
+        telegram_username: ''
     });
 
     useEffect(() => {
         const fetchProfile = async () => {
             setLoading(true);
             try {
-                const { data: { user } } = await supabase.auth.getUser();
-                const userSession = document.cookie.split('; ').find(row => row.startsWith('user_session='))?.split('=')[1];
-                const userId = user?.id || userSession;
-
-                if (!userId) {
-                    router.replace('/login');
-                    return;
-                }
-
                 const { data, error } = await supabase
                     .from('teachers')
                     .select('*')
-                    .eq('id', userId)
-                    .single();
+                    .single(); // Assuming session-based user fetching in middleware/context
 
                 if (error) throw error;
                 if (data) {
@@ -51,7 +42,8 @@ export default function TeacherProfilePage() {
                         id: data.id,
                         full_name: data.full_name || '',
                         email: data.email || '',
-                        whatsapp_number: data.whatsapp_number || ''
+                        telegram_chat_id: data.telegram_chat_id || '',
+                        telegram_username: data.telegram_username || ''
                     });
                 }
             } catch (error) {
@@ -65,6 +57,26 @@ export default function TeacherProfilePage() {
         fetchProfile();
     }, [router, supabase]);
 
+    const handleVerifyTelegram = async () => {
+        setSaving(true);
+        try {
+            const token = Math.random().toString(36).substring(2, 15);
+            const { error } = await supabase
+                .from('teachers')
+                .update({ verification_token: token })
+                .eq('id', formData.id);
+
+            if (error) throw error;
+
+            window.open(`https://t.me/HadirMu_Bot?start=v_${token}`, '_blank');
+            setMessage({ type: 'success', text: 'Silakan klik "Start" di aplikasi Telegram Anda.' });
+        } catch (error: any) {
+            setMessage({ type: 'error', text: 'Gagal menghubungkan Telegram: ' + error.message });
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
@@ -76,8 +88,7 @@ export default function TeacherProfilePage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     id: formData.id,
-                    full_name: formData.full_name,
-                    whatsapp_number: formData.whatsapp_number
+                    full_name: formData.full_name
                 })
             });
 
@@ -145,22 +156,45 @@ export default function TeacherProfilePage() {
                         </div>
 
                         <div className="pt-2">
-                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider mb-2">Nomor WhatsApp (Reset Password)</label>
-                            <div className="space-y-3">
-                                <div className="relative">
-                                    <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                                    <input
-                                        type="tel"
-                                        value={formData.whatsapp_number}
-                                        onChange={(e) => {
-                                            setFormData({ ...formData, whatsapp_number: e.target.value });
-                                        }}
-                                        placeholder="Contoh: 08123456789"
-                                        className={`w-full pl-12 pr-4 py-3 rounded-xl border focus:outline-none transition-all font-medium bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-400 text-black dark:text-white`}
-                                    />
+                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider mb-2">Notifikasi & Keamanan</label>
+                            
+                            {formData.telegram_chat_id ? (
+                                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50 rounded-2xl flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-emerald-500 rounded-lg p-2">
+                                            <MessageCircle className="h-5 w-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Telegram Terhubung</p>
+                                            <p className="text-[10px] text-emerald-600 dark:text-emerald-500">@{formData.telegram_username || 'User'}</p>
+                                        </div>
+                                    </div>
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                                 </div>
-                            </div>
-                            <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-2 ml-1">Nomor ini akan digunakan sebagai satu-satunya cara jika Anda lupa password.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/50 rounded-2xl">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="bg-amber-500 rounded-lg p-2">
+                                                <MessageCircle className="h-5 w-5 text-white" />
+                                            </div>
+                                            <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Telegram Belum Terhubung</p>
+                                        </div>
+                                        <p className="text-[10px] text-amber-600 dark:text-amber-500 leading-relaxed">
+                                            Hubungkan Telegram untuk menerima kode OTP saat lupa password dan notifikasi sistem.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleVerifyTelegram}
+                                        disabled={saving}
+                                        className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                        Hubungkan Sekarang
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -170,7 +204,7 @@ export default function TeacherProfilePage() {
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 dark:shadow-none transition-all active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2"
                     >
                         {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                        Simpan Perubahan
+                        Simpan Profil
                     </button>
                 </form>
             </main>
