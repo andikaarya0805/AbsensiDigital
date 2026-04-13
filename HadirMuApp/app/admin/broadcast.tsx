@@ -37,17 +37,31 @@ export default function BroadcastScreen() {
                                 body: JSON.stringify({ message, target })
                             });
 
-                            const result = await response.json();
-
-                            if (!response.ok) {
-                                throw new Error(result.error || 'Gagal mengirim broadcast');
+                            const text = await response.text();
+                            let result;
+                            
+                            try {
+                                result = JSON.parse(text);
+                            } catch (e) {
+                                throw new Error(`Server returned invalid response (Status: ${response.status})`);
                             }
 
-                            Alert.alert('Sukses', `Berhasil mengirim pesan ke ${result.successCount} pengguna.`);
+                            if (!response.ok) {
+                                throw new Error(result.error || `Gagal mengirim broadcast (Status: ${response.status})`);
+                            }
+
+                            Alert.alert('Sukses', `Berhasil mengirim pesan ke ${result.successCount || result.count || 'semua'} pengguna.`);
                             setMessage('');
                         } catch (error: any) {
                             console.error('Broadcast Network Error:', error);
-                            Alert.alert('Gagal Terhubung', `Tidak dapat menghubungi server. Cek koneksi internet.\n\nDetail: ${error.message}\nURL: ${API_URL}`);
+                            
+                            // Specific handling for "Unexpected token <" which means HTML error
+                            let errorMsg = error.message;
+                            if (errorMsg.includes('Unexpected token <') || errorMsg.includes('JSON')) {
+                                errorMsg = `Server error (404/500). Harap lapor admin.\nURL: ${API_URL}/api/admin/broadcast`;
+                            }
+
+                            Alert.alert('Gagal Terhubung', errorMsg);
                         } finally {
                             setIsSending(false);
                         }

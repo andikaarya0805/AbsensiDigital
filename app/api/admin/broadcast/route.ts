@@ -9,7 +9,10 @@ const supabase = createClient(
 
 export async function POST(req: Request) {
     try {
-        const { message, target } = await req.json(); // target: 'all', 'students', 'teachers'
+        const body = await req.json().catch(() => ({}));
+        const { message, target } = body;
+
+        console.log(`[Broadcast API] Target: ${target}, Message: ${message}`);
 
         if (!message) {
             return NextResponse.json({ error: 'Pesan tidak boleh kosong' }, { status: 400 });
@@ -49,11 +52,15 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ 
             success: true, 
+            successCount: uniqueChatIds.length,
             message: `Pesan berhasil dikirim ke ${uniqueChatIds.length} user.` 
         });
 
     } catch (error: any) {
         console.error('Broadcast Error:', error);
-        return NextResponse.json({ error: 'Gagal mengirim broadcast' }, { status: 500 });
+        return NextResponse.json({ 
+            error: 'Gagal mengirim broadcast', 
+            details: error.message 
+        }, { status: 500 });
     }
 }
