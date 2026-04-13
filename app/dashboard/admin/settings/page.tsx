@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, MapPin, Save, Loader2, CheckCircle, Navigation } from 'lucide-react';
+import { Settings, MapPin, Save, Loader2, CheckCircle, Navigation, AlertTriangle } from 'lucide-react';
 
 export default function SettingsPage() {
     const [config, setConfig] = useState({
@@ -91,6 +91,20 @@ export default function SettingsPage() {
                     Atur koordinat pusat sekolah dan radius presensi siswa.
                 </p>
             </div>
+
+            {(config.latitude === 0 && config.longitude === 0) && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-6 rounded-[24px] flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="bg-amber-100 dark:bg-amber-800 p-3 rounded-2xl">
+                        <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div className="space-y-1">
+                        <h4 className="font-black text-amber-900 dark:text-amber-200">Lokasi Belum Diatur</h4>
+                        <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed">
+                            Koordinat sekolah saat ini masih bernilai 0. Siswa <b>tidak akan bisa absen</b> atau akan mendapatkan pesan error karena jarak tidak valid. Silakan gunakan tombol "Gunakan Lokasi Saya Sekarang" atau isi koordinat secara manual.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -187,23 +201,4 @@ export default function SettingsPage() {
     );
 }
 
-function AlertTriangle(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-            <path d="M12 9v4" />
-            <path d="M12 17h.01" />
-        </svg>
-    );
-}
+

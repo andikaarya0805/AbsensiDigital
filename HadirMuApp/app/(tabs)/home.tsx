@@ -311,45 +311,57 @@ export default function HomeScreen() {
   };
 
   // --- Student Logic ---
-  const handleScan = async ({ data }: { data: string }) => {
-    if (scanStatus === 'success' || scanStatus === 'scanning') return;
-    setScanStatus('scanning');
+    const handleScan = async ({ data }: { data: string }) => {
+        if (scanStatus === 'success' || scanStatus === 'scanning') return;
+        setScanStatus('scanning');
 
-    try {
-      // SECURITY CHECK: Device Identity (Sync with web parity)
-      const currentDeviceId = await SecureStore.getItemAsync('expo_device_id');
-      if (profile?.device_id && profile.device_id !== currentDeviceId) {
-          throw new Error('Perangkat ini tidak terdaftar untuk akun Anda. Gunakan perangkat asli atau hubungi Admin.');
-      }
+        try {
+            // SECURITY CHECK: Device Identity
+            const currentDeviceId = await SecureStore.getItemAsync('expo_device_id');
+            if (profile?.device_id && profile.device_id !== currentDeviceId) {
+                throw new Error('Perangkat ini tidak terdaftar untuk akun Anda.');
+            }
 
-      // GEOLOCATION & UNIFIED API
-      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+            // GEOLOCATION
+            const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
 
-      const response = await fetch(`${API_URL}/api/attendance/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          qrPayload: data,
-          studentId: user?.id,
-          coords: {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude
-          }
-        })
-      });
+            // Extract sessionName from QR parts: HADIR_SESSION_timestamp_secret_sessionName
+            const parts = data.split('_');
+            const extractedSession = parts.length >= 5 ? parts.slice(4).join('_') : 'DEFAULT';
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Gagal absensi');
+            const response = await fetch(`${API_URL}/api/attendance/scan`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    qrText: data,
+                    studentId: user?.id,
+                    sessionName: extractedSession,
+                    lat: location.coords.latitude,
+                    lng: location.coords.longitude
+                })
+            });
 
-      setScanStatus('success');
-      setScanMessage(result.message || 'Presensi berhasil dicatat!');
-      fetchInitialData();
-    } catch (err: any) {
-      setScanStatus('error');
-      setScanMessage(err.message);
-      setTimeout(() => setScanStatus('idle'), 3000);
-    }
-  };
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Gagal absensi');
+
+            setScanStatus('success');
+            setScanMessage(result.message || 'Presensi berhasil dicatat!');
+            fetchInitialData();
+        } catch (err: any) {
+            console.error('Scan Error:', err);
+            setScanStatus('error');
+            
+            let errMsg = err.message;
+            if (errMsg.includes('radius')) {
+                // Keep radius error message as is (it contains distance info)
+            } else if (errMsg.includes('Unexpected token <')) {
+                errMsg = 'Server Error (404/500)';
+            }
+
+            setScanMessage(errMsg);
+            setTimeout(() => setScanStatus('idle'), 4000);
+        }
+    };
 
   useEffect(() => {
     let interval: string | number | NodeJS.Timeout | undefined;
