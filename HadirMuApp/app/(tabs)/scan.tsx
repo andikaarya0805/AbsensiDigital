@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
+import { getRobustLocation } from '../../lib/location';
 import { useRouter } from 'expo-router';
 import { COLORS, RADIUS } from '../../constants/theme';
 import { validateQRPayload } from '../../lib/qr';
@@ -60,8 +61,8 @@ export default function ScanScreen() {
       }
 
       // 2. Geofencing & Record via Centralized API
-      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      console.log('Mobile Location:', location.coords.latitude, location.coords.longitude);
+      const location = await getRobustLocation();
+      console.log('Mobile Location:', location.latitude, location.longitude);
 
       const response = await fetch(`${API_URL}/api/attendance/scan`, {
         method: 'POST',
@@ -70,16 +71,22 @@ export default function ScanScreen() {
           qrPayload: data,
           studentId: user?.id,
           coords: {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude
+            latitude: location.latitude,
+            longitude: location.longitude
           }
         })
       });
 
-      const result = await response.json();
+      const text = await response.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Server returned invalid response (Status: ${response.status})`);
+      }
 
       if (!response.ok) {
-        throw new Error(result.error || 'Gagal melakukan absensi');
+        throw new Error(result.error || result.details || 'Gagal melakukan absensi');
       }
 
       Alert.alert('Berhasil', result.message || 'Absensi kamu sudah tercatat. Selamat belajar!', [
@@ -118,8 +125,15 @@ export default function ScanScreen() {
           <TouchableOpacity 
             style={styles.locationInfo}
             onPress={async () => {
-              const { status } = await Location.requestForegroundPermissionsAsync();
-              if (status === 'granted') Alert.alert('GPS Aktif', 'Lokasi kamu siap divalidasi.');
+              try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                  const location = await getRobustLocation();
+                  Alert.alert('GPS Aktif', `Lokasi siap divalidasi.\nLat: ${location.latitude.toFixed(6)}\nLong: ${location.longitude.toFixed(6)}`);
+                }
+              } catch (e: any) {
+                Alert.alert('Error GPS', e.message);
+              }
             }}
           >
             <MapPin size={18} color={COLORS.primary} />

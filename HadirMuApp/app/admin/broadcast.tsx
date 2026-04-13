@@ -50,18 +50,21 @@ export default function BroadcastScreen() {
                                 throw new Error(result.error || `Gagal mengirim broadcast (Status: ${response.status})`);
                             }
 
-                            Alert.alert('Sukses', `Berhasil mengirim pesan ke ${result.successCount || result.count || 'semua'} pengguna.`);
+                            if (result.successCount === 0) {
+                                Alert.alert('Peringatan', result.message || 'Tidak ada penerima yang ditemukan.');
+                            } else {
+                                Alert.alert('Sukses', result.message || `Berhasil mengirim pesan ke ${result.successCount} pengguna.`);
+                            }
                             setMessage('');
                         } catch (error: any) {
                             console.error('Broadcast Network Error:', error);
                             
-                            // Specific handling for "Unexpected token <" which means HTML error
                             let errorMsg = error.message;
-                            if (errorMsg.includes('Unexpected token <') || errorMsg.includes('JSON')) {
-                                errorMsg = `Server error (404/500). Harap lapor admin.\nURL: ${API_URL}/api/admin/broadcast`;
+                            if (errorMsg.includes('Unexpected token <')) {
+                                errorMsg = `Server error (Terjadi kesalahan sistem atau endpoint tidak ditemukan).\nURL: ${API_URL}/api/admin/broadcast`;
                             }
 
-                            Alert.alert('Gagal Terhubung', errorMsg);
+                            Alert.alert('Gagal Mengirim', errorMsg);
                         } finally {
                             setIsSending(false);
                         }

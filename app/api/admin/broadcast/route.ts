@@ -40,7 +40,11 @@ export async function POST(req: Request) {
         const uniqueChatIds = [...new Set(recipients.map(r => r.telegram_chat_id))];
 
         if (uniqueChatIds.length === 0) {
-            return NextResponse.json({ error: 'Tidak ada user yang terhubung ke Telegram' }, { status: 404 });
+            return NextResponse.json({ 
+                success: true,
+                successCount: 0,
+                message: 'Tidak ada user yang terhubung ke Telegram untuk target ini.' 
+            }, { status: 200 });
         }
 
         // Send messages

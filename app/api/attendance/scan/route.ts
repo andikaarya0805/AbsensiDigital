@@ -34,7 +34,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Identitas siswa tidak ditemukan' }, { status: 404 });
         }
 
-        const studentClass = student.classes?.name;
+        const studentClass = Array.isArray(student.classes) ? student.classes[0]?.name : (student.classes as any)?.name;
         console.log(`[Scan API] Student found: ${student.full_name} (${studentClass})`);
 
         // 3. QR Security Check

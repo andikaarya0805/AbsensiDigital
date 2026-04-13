@@ -4,6 +4,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { ChevronLeft, MapPin, Save, Map, Crosshair, HelpCircle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
+import { getRobustLocation } from '../../lib/location';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://absensi-digital-i87xnkg8j-andikaarya0805s-projects.vercel.app';
 
@@ -49,17 +50,12 @@ export default function AdminSettingsScreen() {
     const handleGetCurrentLocation = async () => {
         try {
             setIsLocating(true);
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('Izin Ditolak', 'Izinkan akses lokasi untuk mendapatkan koordinat saat ini.');
-                return;
-            }
-
-            const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+            const location = await getRobustLocation();
+            
             setFormData({
                 ...formData,
-                latitude: location.coords.latitude.toString(),
-                longitude: location.coords.longitude.toString()
+                latitude: location.latitude.toString(),
+                longitude: location.longitude.toString()
             });
             Alert.alert('Sukses', 'Berhasil mendapatkan lokasi saat ini.');
         } catch (error: any) {
