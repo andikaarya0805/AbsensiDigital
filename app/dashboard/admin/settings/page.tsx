@@ -44,13 +44,23 @@ export default function SettingsPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
             });
+            
+            const result = await res.json();
+            
             if (res.ok) {
-                setStatus({ type: 'success', msg: 'Pengaturan berhasil disimpan!' });
+                setStatus({ type: 'success', msg: result.message || 'Pengaturan berhasil disimpan!' });
             } else {
-                throw new Error('Gagal menyimpan');
+                let errorMsg = 'Gagal menyimpan';
+                if (result.code === 'PGRST205') {
+                    errorMsg = 'Error: Tabel "school_settings" belum dibuat di database Supabase.';
+                } else if (result.details) {
+                    errorMsg = `Error: ${result.details}`;
+                }
+                throw new Error(errorMsg);
             }
-        } catch (e) {
-            setStatus({ type: 'error', msg: 'Terjadi kesalahan sistem.' });
+        } catch (e: any) {
+            console.error('Settings Save Error:', e);
+            setStatus({ type: 'error', msg: e.message || 'Terjadi kesalahan sistem.' });
         } finally {
             setSaving(false);
         }

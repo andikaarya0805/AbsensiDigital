@@ -11,11 +11,14 @@ export async function GET() {
         const { data, error } = await supabase
             .from('school_settings')
             .select('*')
-            .single();
+            .limit(1)
+            .maybeSingle();
 
+        if (error) throw error;
         return NextResponse.json(data || {});
-    } catch (e) {
-        return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
+    } catch (e: any) {
+        console.error('Fetch Settings Error:', e);
+        return NextResponse.json({ error: 'Failed to fetch settings', details: e.message }, { status: 500 });
     }
 }
 
@@ -24,29 +27,58 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { latitude, longitude, radius_meters } = body;
 
-        // Upsert logic: if exists update, if not insert
-        // Since we only want ONE row of settings, we use a fixed ID or check existence.
-        const { data: existing } = await supabase.from('school_settings').select('id').limit(1).single();
+        console.log('[Settings API] Saving:', body);
+
+        // Fetch existing using maybeSingle() which is safer than single()
+        const { data: existing, error: fetchError } = await supabase
+            .from('school_settings')
+            .select('id')
+            .limit(1)
+            .maybeSingle();
+
+        if (fetchError && fetchError.code !== 'PGRST116') {
+            console.error('Fetch existing settings error:', fetchError);
+            throw fetchError;
+        }
 
         let result;
         if (existing) {
+            console.log('[Settings API] Updating existing ID:', existing.id);
             result = await supabase
                 .from('school_settings')
-                .update({ latitude, longitude, radius_meters })
+                .update({ 
+                    latitude, 
+                    longitude, 
+                    radius_meters, 
+                    updated_at: new Date().toISOString() 
+                })
                 .eq('id', existing.id)
                 .select();
         } else {
+            console.log('[Settings API] Inserting new settings');
             result = await supabase
                 .from('school_settings')
                 .insert({ latitude, longitude, radius_meters })
                 .select();
         }
 
-        if (result.error) throw result.error;
+        if (result.error) {
+            console.error('Upsert result error:', result.error);
+            throw result.error;
+        }
 
-        return NextResponse.json({ success: true, data: result.data[0] });
+        return NextResponse.json({ 
+            success: true, 
+            data: result.data?.[0],
+            message: 'Pengaturan berhasil diperbarui'
+        });
+
     } catch (error: any) {
-        console.error('Settings API Error:', error);
-        return NextResponse.json({ error: 'Gagal menyimpan pengaturan' }, { status: 500 });
+        console.error('Settings API Critical Error:', error);
+        return NextResponse.json({ 
+            error: 'Gagal menyimpan pengaturan', 
+            details: error.message,
+            code: error.code 
+        }, { status: 500 });
     }
 }
