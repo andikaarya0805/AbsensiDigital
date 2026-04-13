@@ -14,18 +14,35 @@ export async function POST(req: Request) {
         const body = await req.json().catch(() => ({}));
         let { studentId, sessionName, lat, lng, qrText } = body;
 
-        console.log(`[Scan API] User: ${studentId}, Lat: ${lat}, Lng: ${lng}, QR: ${qrText?.substring(0, 20)}...`);
+        console.log(`[Scan API] START - User: ${studentId}, Lat: ${lat}, Lng: ${lng}, session: ${sessionName}`);
 
         // 1. Basic Validation
         if (!studentId || !qrText) {
+            console.error('[Scan API] ERROR: Missing studentId or qrText');
             return NextResponse.json({ error: 'Data presensi tidak lengkap' }, { status: 400 });
         }
 
-        // 2. QR Security Check
+        // 2. Fetch Student & Class Info (EARLY)
+        const { data: student, error: studentError } = await supabase
+            .from('students')
+            .select('id, full_name, telegram_chat_id, class_id, classes(name)')
+            .eq('id', studentId)
+            .single();
+
+        if (studentError || !student) {
+            console.error('[Scan API] ERROR: Student not found', studentError);
+            return NextResponse.json({ error: 'Identitas siswa tidak ditemukan' }, { status: 404 });
+        }
+
+        const studentClass = student.classes?.name;
+        console.log(`[Scan API] Student found: ${student.full_name} (${studentClass})`);
+
+        // 3. QR Security Check
         const QR_SECRET = process.env.NEXT_PUBLIC_QR_SECRET || 'FALLBACK_SECRET';
         const parts = qrText.split('_');
 
         if (parts.length < 4 || parts[0] !== 'HADIR' || parts[1] !== 'SESSION') {
+            console.error('[Scan API] ERROR: Invalid QR Format', qrText);
             return NextResponse.json({ error: 'Format QR Code tidak valid' }, { status: 400 });
         }
 
@@ -38,28 +55,45 @@ export async function POST(req: Request) {
         }
         
         if (scannedSecret !== QR_SECRET) {
+            console.error('[Scan API] ERROR: Secret Mismatch', { scanned: scannedSecret, expected: QR_SECRET });
             return NextResponse.json({ error: 'QR Code palsu atau tidak valid' }, { status: 403 });
         }
 
-        // Validate timestamp (30s window, allow 1 window tolerance)
-        const currentTimestamp = Math.floor(Date.now() / (30 * 1000));
-        if (Math.abs(scannedTimestamp - currentTimestamp) > 1) {
+        // Validate timestamp (60s window, allow 2 windows tolerance = ~2.5 mins window)
+        const currentTimestamp = Math.floor(Date.now() / (60 * 1000));
+        const scannedTimeInMinutes = Math.floor(scannedTimestamp * 30 / 60); // QR is in 30s chunks
+        
+        if (Math.abs(scannedTimeInMinutes - currentTimestamp) > 2) {
+            console.error('[Scan API] ERROR: Expired', { scannedTimeInMinutes, currentTimestamp });
             return NextResponse.json({ error: 'QR Code sudah kadaluarsa (silakan scan ulang)' }, { status: 400 });
         }
 
-        // 3. Geofencing Check
+        // 4. Class Validation
+        if (sessionName && studentClass) {
+            const qrClassName = sessionName.split(' - ')[0];
+            const isMatchingClass = sessionName.toLowerCase().includes(studentClass.toLowerCase());
+            
+            if (!isMatchingClass) {
+                console.warn(`[Scan API] DENIED: Class mismatch. Student class: ${studentClass}, QR for: ${qrClassName}`);
+                return NextResponse.json({ 
+                    error: `Gagal: Sesi ini untuk kelas "${qrClassName}", sedangkan Anda berada di kelas "${studentClass}".` 
+                }, { status: 403 });
+            }
+        }
+
+        // 5. Geofencing Check
         const { data: settings } = await supabase
             .from('school_settings')
             .select('*')
-            .single();
+            .maybeSingle();
 
-        if (settings?.latitude && settings?.longitude) {
+        if (settings?.latitude && settings?.longitude && settings.latitude !== 0) {
             if (!lat || !lng) {
                 return NextResponse.json({ error: 'Lokasi GPS diperlukan untuk presensi' }, { status: 400 });
             }
 
             const distance = calculateDistance(lat, lng, settings.latitude, settings.longitude);
-            const radius = settings.radius_meters || 50; // Default buffer 50m
+            const radius = settings.radius_meters || 50; 
 
             console.log(`[Geofencing] User distance: ${distance}m, Max radius: ${radius}m`);
 
@@ -70,7 +104,7 @@ export async function POST(req: Request) {
             }
         }
 
-        // 4. Rate Limiting (Double Scan)
+        // 6. Rate Limiting (Double Scan)
         const today = new Date().toISOString().split('T')[0];
         const { data: existing } = await supabase
             .from('attendance')
@@ -85,13 +119,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Anda sudah presensi untuk sesi ini hari ini' }, { status: 400 });
         }
 
-        // 5. Insert Attendance
-        const { data: student } = await supabase
-            .from('students')
-            .select('full_name, telegram_chat_id')
-            .eq('id', studentId)
-            .single();
-
+        // 7. Insert Attendance
         const { error: insertError } = await supabase
             .from('attendance')
             .insert({
@@ -102,7 +130,7 @@ export async function POST(req: Request) {
 
         if (insertError) throw insertError;
 
-        // 6. Send Telegram Notification
+        // 8. Send Telegram Notification
         if (student?.telegram_chat_id) {
             try {
                 const timeStr = new Date().toLocaleTimeString('id-ID', { hour12: false });

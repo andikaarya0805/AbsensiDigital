@@ -316,6 +316,8 @@ export default function HomeScreen() {
         setScanStatus('scanning');
 
         try {
+            console.log('[Scanner] Scanned Data:', data);
+
             // SECURITY CHECK: Device Identity
             const currentDeviceId = await SecureStore.getItemAsync('expo_device_id');
             if (profile?.device_id && profile.device_id !== currentDeviceId) {
@@ -328,6 +330,13 @@ export default function HomeScreen() {
             // Extract sessionName from QR parts: HADIR_SESSION_timestamp_secret_sessionName
             const parts = data.split('_');
             const extractedSession = parts.length >= 5 ? parts.slice(4).join('_') : 'DEFAULT';
+            
+            console.log('[Scanner] Extracted Session:', extractedSession);
+            console.log('[Scanner] Payload Params:', {
+                studentId: user?.id,
+                lat: location.coords.latitude,
+                lng: location.coords.longitude
+            });
 
             const response = await fetch(`${API_URL}/api/attendance/scan`, {
                 method: 'POST',
@@ -342,7 +351,10 @@ export default function HomeScreen() {
             });
 
             const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'Gagal absensi');
+            if (!response.ok) {
+                console.error('[Scanner] API Error Result:', result);
+                throw new Error(result.error || 'Gagal absensi');
+            }
 
             setScanStatus('success');
             setScanMessage(result.message || 'Presensi berhasil dicatat!');
@@ -353,13 +365,16 @@ export default function HomeScreen() {
             
             let errMsg = err.message;
             if (errMsg.includes('radius')) {
-                // Keep radius error message as is (it contains distance info)
-            } else if (errMsg.includes('Unexpected token <')) {
-                errMsg = 'Server Error (404/500)';
+                // Keep radius error message as is
+            } else if (errMsg.includes('Unexpected token <') || errMsg.includes('Network request failed')) {
+                errMsg = 'Gangguan Koneksi ke Server (Coba Lagi)';
+            } else if (errMsg.includes('kadaluarsa')) {
+                errMsg = 'QR Code Kadaluarsa. Minta Guru Refresh QR.';
             }
 
             setScanMessage(errMsg);
-            setTimeout(() => setScanStatus('idle'), 4000);
+            // Longer duration for error messages so user can read
+            setTimeout(() => setScanStatus('idle'), 5000);
         }
     };
 
