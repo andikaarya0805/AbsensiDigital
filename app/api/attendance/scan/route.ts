@@ -25,7 +25,7 @@ export async function POST(req: Request) {
         // 2. Fetch Student & Class Info (EARLY)
         const { data: student, error: studentError } = await supabase
             .from('students')
-            .select('id, full_name, telegram_chat_id, class_id, classes(name)')
+            .select('id, full_name, telegram_chat_id, class_id, class, classes(name)')
             .eq('id', studentId)
             .single();
 
@@ -34,8 +34,9 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Identitas siswa tidak ditemukan' }, { status: 404 });
         }
 
-        const studentClass = Array.isArray(student.classes) ? student.classes[0]?.name : (student.classes as any)?.name;
-        console.log(`[Scan API] Student found: ${student.full_name} (${studentClass})`);
+        const linkedClass = Array.isArray(student.classes) ? student.classes[0]?.name : (student.classes as any)?.name;
+        const studentClass = linkedClass || student.class;
+        console.log(`[Scan API] Student found: ${student.full_name} (Linked: ${linkedClass}, Legacy: ${student.class})`);
 
         // 3. QR Security Check
         const QR_SECRET = process.env.NEXT_PUBLIC_QR_SECRET || 'FALLBACK_SECRET';

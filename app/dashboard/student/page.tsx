@@ -114,7 +114,13 @@ export default function StudentDashboard() {
                     headers: { 'Content-Type': 'application/json' }
                 });
                 const linkData = await linkRes.json();
-                setVerificationLink(linkData.link);
+                
+                if (linkData.link) {
+                    setVerificationLink(linkData.link);
+                } else {
+                    console.error("Link Generation Failed:", linkData.error);
+                    showToast("Gagal menyiapkan tautan verifikasi. Silakan hubungi admin.", "error");
+                }
 
                 // Start polling until the user completes verification on Telegram
                 if (verificationIntervalRef.current) clearInterval(verificationIntervalRef.current);
