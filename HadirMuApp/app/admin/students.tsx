@@ -9,7 +9,7 @@ import {
   RotateCcw, Smartphone
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { v4 as uuidv4 } from 'uuid';
+import * as Crypto from 'expo-crypto';
 
 export default function AdminStudentsScreen() {
     const { colors } = useTheme();
@@ -87,7 +87,7 @@ export default function AdminStudentsScreen() {
                 Alert.alert('Sukses', 'Data siswa berhasil diperbarui');
             } else {
                 // Generate UUID for new student to prevent null id constraint error
-                payload.id = uuidv4();
+                payload.id = Crypto.randomUUID();
                 
                 const { error } = await supabase
                     .from('students')

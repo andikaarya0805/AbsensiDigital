@@ -1,7 +1,7 @@
 'use client';
 
 // Imports updated
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { getDeviceId } from '@/lib/utils';
@@ -17,7 +17,8 @@ import {
     BellRing,
     Loader2,
     Moon,
-    Sun
+    Sun,
+    Send
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 
@@ -40,10 +41,11 @@ export default function StudentDashboard() {
     const { theme, toggleTheme } = useTheme();
 
     // State for Verification & Profile
-    const [isVerified, setIsVerified] = useState(true); // Default true to avoid flash, check on load
-    const [verificationLink, setVerificationLink] = useState('');
-    const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [isVerified, setIsVerified] = useState(false); // Changed to false by default to trigger verification check
+    const [verificationLink, setVerificationLink] = useState<string | null>(null);
+    const verificationIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
@@ -86,6 +88,12 @@ export default function StudentDashboard() {
             localStorage.removeItem('student_session');
             window.location.href = '/login';
         }
+        // Cleanup on unmount
+        return () => {
+            if (verificationIntervalRef.current) {
+                clearInterval(verificationIntervalRef.current);
+            }
+        };
     }, []);
 
     /**
@@ -109,12 +117,17 @@ export default function StudentDashboard() {
                 setVerificationLink(linkData.link);
 
                 // Start polling until the user completes verification on Telegram
-                const interval = setInterval(async () => {
+                if (verificationIntervalRef.current) clearInterval(verificationIntervalRef.current);
+                
+                verificationIntervalRef.current = setInterval(async () => {
                     const pollRes = await fetch(`/api/student/verify-token?nis=${nis}`);
                     const pollData = await pollRes.json();
                     if (pollData.verified) {
                         setIsVerified(true);
-                        clearInterval(interval);
+                        if (verificationIntervalRef.current) {
+                            clearInterval(verificationIntervalRef.current);
+                            verificationIntervalRef.current = null;
+                        }
                         showToast("Akun Anda Berhasil Diverifikasi!", "success");
                     }
                 }, 3000); // Check status every 3 seconds
@@ -241,7 +254,7 @@ export default function StudentDashboard() {
             )}
 
             {/* VERIFICATION OVERLAY */}
-            {!isVerified && (
+            {!isVerified && profile && (
                 <div className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-6">
                     <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center space-y-6 shadow-2xl animate-in zoom-in-95">
                         <div className="h-20 w-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
@@ -267,12 +280,16 @@ export default function StudentDashboard() {
                                 href={verificationLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 transition-all hover:scale-105 active:scale-95"
+                                className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-2xl transition-all shadow-lg shadow-blue-200 dark:shadow-none active:scale-95"
                             >
+                                <Send className="h-5 w-5" />
                                 Buka Telegram
                             </a>
                         ) : (
-                            <div className="animate-pulse bg-slate-200 h-12 w-full rounded-xl"></div>
+                            <div className="flex-1 flex items-center justify-center gap-2 bg-slate-100 text-slate-400 font-bold py-4 px-6 rounded-2xl animate-pulse">
+                                <div className="h-5 w-5 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin"></div>
+                                Menyiapkan Tautan...
+                            </div>
                         )}
 
                         <p className="text-xs text-slate-400">Menunggu konfirmasi Telegram...</p>

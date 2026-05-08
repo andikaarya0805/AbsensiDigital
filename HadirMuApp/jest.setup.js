@@ -11,7 +11,6 @@ if (typeof global.navigator === 'undefined') {
   global.navigator = { product: 'ReactNative' };
 }
 
-import 'react-native-get-random-values';
 import 'react-native-gesture-handler/jestSetup';
 
 jest.mock('react-native-reanimated', () => {
@@ -50,4 +49,8 @@ jest.mock('expo-router', () => ({
     replace: jest.fn(),
   }),
   Stack: () => null,
+}));
+
+jest.mock('expo-crypto', () => ({
+  randomUUID: jest.fn(() => '123e4567-e89b-12d3-a456-426614174000'),
 }));

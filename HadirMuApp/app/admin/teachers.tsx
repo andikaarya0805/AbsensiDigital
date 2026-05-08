@@ -8,7 +8,7 @@ import {
   Mail, Shield, Key, Loader2, RotateCcw, Smartphone
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { v4 as uuidv4 } from 'uuid';
+import * as Crypto from 'expo-crypto';
 
 export default function AdminTeachersScreen() {
     const { colors } = useTheme();
@@ -78,7 +78,7 @@ export default function AdminTeachersScreen() {
                 Alert.alert('Sukses', 'Data guru berhasil diperbarui');
             } else {
                 // Generate UUID for new teacher to prevent null id constraint error
-                payload.id = uuidv4();
+                payload.id = Crypto.randomUUID();
                 
                 const { error } = await supabase
                     .from('teachers')
