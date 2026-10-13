@@ -29,14 +29,16 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSub,
         tabBarStyle: {
           backgroundColor: colors.card,
           borderTopColor: colors.border,
-          height: 65 + (insets.bottom > 0 ? insets.bottom - 10 : 0),
+          height: 60 + (insets.bottom > 0 ? insets.bottom : 10),
           paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
           paddingTop: 10,
+          borderTopWidth: 1,
         },
         headerStyle: {
           backgroundColor: colors.bg,

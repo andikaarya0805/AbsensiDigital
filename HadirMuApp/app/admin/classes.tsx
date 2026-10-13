@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, FlatList } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -165,12 +165,21 @@ export default function AdminClassesScreen() {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.listContent}>
-                {loading ? (
-                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
-                ) : filteredClasses.length > 0 ? (
-                    filteredClasses.map((cls, idx) => (
-                        <View key={cls.id} style={styles.classCard}>
+            {loading && classes.length === 0 ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 }}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredClasses}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={styles.listContent}
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={10}
+                    windowSize={5}
+                    removeClippedSubviews={true}
+                    renderItem={({ item: cls }) => (
+                        <View style={styles.classCard}>
                             <View style={styles.cardMain}>
                                 <View style={styles.iconBox}>
                                     <BookOpen size={24} color={colors.primary} />
@@ -195,14 +204,17 @@ export default function AdminClassesScreen() {
                                 </View>
                             </View>
                         </View>
-                    ))
-                ) : (
-                    <View style={styles.emptyContainer}>
-                        <BookOpen size={48} color={colors.border} />
-                        <Text style={styles.emptyText}>Tidak ada kelas yang ditemukan</Text>
-                    </View>
-                )}
-            </ScrollView>
+                    )}
+                    ListEmptyComponent={
+                        !loading ? (
+                            <View style={styles.emptyContainer}>
+                                <BookOpen size={48} color={colors.border} />
+                                <Text style={styles.emptyText}>Tidak ada kelas yang ditemukan</Text>
+                            </View>
+                        ) : null
+                    }
+                />
+            )}
 
             {/* Form Modal */}
             <Modal visible={showModal} animationType="slide" transparent={true}>

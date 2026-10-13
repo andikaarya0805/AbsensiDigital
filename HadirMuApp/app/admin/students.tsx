@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, FlatList } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -10,11 +10,12 @@ import {
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
+import { CONFIG } from '../../constants/Config';
 
 export default function AdminStudentsScreen() {
     const { colors } = useTheme();
     const styles = createStyles(colors);
-    const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://absensi-digital-i87xnkg8j-andikaarya0805s-projects.vercel.app';
+    const API_URL = CONFIG.API_URL;
     const router = useRouter();
     const [students, setStudents] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
@@ -256,12 +257,21 @@ export default function AdminStudentsScreen() {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.listContent}>
-                {loading ? (
-                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
-                ) : filteredStudents.length > 0 ? (
-                    filteredStudents.map((student, idx) => (
-                        <View key={student.id} style={styles.studentCard}>
+            {loading && students.length === 0 ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 }}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredStudents}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={styles.listContent}
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={10}
+                    windowSize={5}
+                    removeClippedSubviews={true}
+                    renderItem={({ item: student }) => (
+                        <View style={styles.studentCard}>
                             <View style={styles.cardMain}>
                                 <View style={styles.avatarBox}>
                                     <GraduationCap size={24} color={colors.success} />
@@ -292,14 +302,17 @@ export default function AdminStudentsScreen() {
                                 </View>
                             </View>
                         </View>
-                    ))
-                ) : (
-                    <View style={styles.emptyContainer}>
-                        <GraduationCap size={48} color={colors.border} />
-                        <Text style={styles.emptyText}>Tidak ada siswa yang ditemukan</Text>
-                    </View>
-                )}
-            </ScrollView>
+                    )}
+                    ListEmptyComponent={
+                        !loading ? (
+                            <View style={styles.emptyContainer}>
+                                <GraduationCap size={48} color={colors.border} />
+                                <Text style={styles.emptyText}>Tidak ada siswa yang ditemukan</Text>
+                            </View>
+                        ) : null
+                    }
+                />
+            )}
 
             {/* Form Modal */}
             <Modal visible={showModal} animationType="slide" transparent={true}>

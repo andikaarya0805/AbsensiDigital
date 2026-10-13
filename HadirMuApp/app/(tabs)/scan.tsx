@@ -9,8 +9,9 @@ import { validateQRPayload } from '../../lib/qr';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { Scan, X, MapPin, Loader2 } from 'lucide-react-native';
+import { CONFIG } from '../../constants/Config';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://absensi-digital-i87xnkg8j-andikaarya0805s-projects.vercel.app';
+const API_URL = CONFIG.API_URL;
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();

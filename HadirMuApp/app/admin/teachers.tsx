@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, FlatList } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -9,11 +9,12 @@ import {
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
+import { CONFIG } from '../../constants/Config';
 
 export default function AdminTeachersScreen() {
     const { colors } = useTheme();
     const styles = createStyles(colors);
-    const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://absensi-digital-i87xnkg8j-andikaarya0805s-projects.vercel.app';
+    const API_URL = CONFIG.API_URL;
     const router = useRouter();
     const [teachers, setTeachers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -220,12 +221,21 @@ export default function AdminTeachersScreen() {
                 />
             </View>
 
-            <ScrollView contentContainerStyle={styles.listContent}>
-                {loading ? (
-                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
-                ) : filteredTeachers.length > 0 ? (
-                    filteredTeachers.map((teacher, idx) => (
-                        <View key={teacher.id} style={styles.teacherCard}>
+            {loading && teachers.length === 0 ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 }}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredTeachers}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={styles.listContent}
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={10}
+                    windowSize={5}
+                    removeClippedSubviews={true}
+                    renderItem={({ item: teacher }) => (
+                        <View style={styles.teacherCard}>
                             <View style={styles.cardMain}>
                                 <View style={styles.avatarBox}>
                                     <UserSquare2 size={24} color={colors.primary} />
@@ -262,14 +272,17 @@ export default function AdminTeachersScreen() {
                                 </View>
                             </View>
                         </View>
-                    ))
-                ) : (
-                    <View style={styles.emptyContainer}>
-                        <Search size={48} color={colors.border} />
-                        <Text style={styles.emptyText}>Data tidak ditemukan</Text>
-                    </View>
-                )}
-            </ScrollView>
+                    )}
+                    ListEmptyComponent={
+                        !loading ? (
+                            <View style={styles.emptyContainer}>
+                                <Search size={48} color={colors.border} />
+                                <Text style={styles.emptyText}>Data tidak ditemukan</Text>
+                            </View>
+                        ) : null
+                    }
+                />
+            )}
 
             {/* Form Modal */}
             <Modal visible={showModal} animationType="slide" transparent={true}>

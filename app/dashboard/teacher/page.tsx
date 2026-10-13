@@ -20,7 +20,9 @@ import {
     Moon,
     Sun,
     FileText,
-    Loader2
+    Loader2,
+    ArrowUpRight,
+    CheckCircle2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -533,16 +535,16 @@ export default function TeacherDashboard() {
                 </div>
 
                 <nav className="space-y-1">
-                    <div className="flex items-center gap-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg font-medium border border-blue-100 dark:border-blue-800/50">
+                    <div className="flex items-center gap-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl font-black text-xs uppercase tracking-widest border border-blue-100 dark:border-blue-800/50">
                         <Users className="h-4 w-4" />
-                        Attendance
+                        Presensi
                     </div>
                     <Link
                         href="/dashboard/teacher/schedule"
-                        className="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors group"
+                        className="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all group font-bold text-xs uppercase tracking-widest"
                     >
                         <Calendar className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
-                        Class Schedule
+                        Jadwal Mengajar
                     </Link>
                     <Link
                         href="/dashboard/teacher/profile"
@@ -565,156 +567,199 @@ export default function TeacherDashboard() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 p-6 md:p-10">
-                <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10">
-
-                    {/* QR Code Section */}
-                    <div className="space-y-6">
-                        <div>
-                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Attendance QR</h2>
-                            <p className="text-slate-500 dark:text-slate-400">Show this QR to students for scanning</p>
-                        </div>
-
-                        {/* Session Selection from Schedule */}
-                        <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                                <BookOpen className="h-4 w-4 inline mr-2 text-blue-600 dark:text-blue-400" />
-                                Pilih Kelas & Mata Pelajaran
-                            </label>
-                            {scheduleSubjects.length > 0 ? (
-                                <select
-                                    value={sessionName}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setSessionName(value);
-                                        // Auto-select class from the dropdown value
-                                        if (value) {
-                                            const className = value.split(' - ')[0];
-                                            setSelectedClass(className);
-                                            setSelectedSession(value);
-                                        }
-                                    }}
-                                    className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none text-black dark:text-white font-medium transition-colors"
-                                >
-                                    <option value="" className="dark:bg-slate-800">-- Pilih dari jadwal --</option>
-                                    {scheduleSubjects.map((s, i) => (
-                                        <option key={i} value={`${s.class_name} - ${s.subject}`} className="dark:bg-slate-800">
-                                            {s.class_name} - {s.subject}
-                                        </option>
-                                    ))}
-                                </select>
-                            ) : (
-                                <input
-                                    type="text"
-                                    placeholder="Contoh: XII RPL 1 - Matematika"
-                                    value={sessionName}
-                                    onChange={(e) => setSessionName(e.target.value)}
-                                    className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none text-black dark:text-white transition-colors"
-                                />
-                            )}
-                        </div>
-
-                        <div ref={qrRef} className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 flex flex-col items-center transition-colors">
-                            <div className="relative p-4 bg-slate-50 dark:bg-white rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-300">
-                                <QRCodeSVG value={qrValue} size={256} level="H" includeMargin={true} />
-                            </div>
-
-                            {sessionName && (
-                                <div className="mt-4">
-                                    <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-4 py-1.5 rounded-full text-sm font-bold">
-                                        {sessionName}
-                                    </span>
+            <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Welcome & Info Bento */}
+                    <div className="lg:col-span-3 bg-linear-to-br from-blue-700 via-indigo-700 to-violet-800 rounded-[40px] p-10 text-white relative overflow-hidden shadow-2xl shadow-blue-500/20 dark:shadow-none transition-all duration-700 group">
+                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full blur-[100px] -mr-48 -mt-48 group-hover:bg-white/20 transition-all duration-1000"></div>
+                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-400/20 rounded-full blur-[80px] -ml-32 -mb-32"></div>
+                        
+                        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-10">
+                            <div className="space-y-5">
+                                <div className="inline-flex items-center gap-2.5 px-4 py-1.5 bg-white/10 backdrop-blur-xl rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-white/20">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                                    <Clock className="h-3 w-3" />
+                                    {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                                 </div>
-                            )}
-
-                            <div className="mt-6 w-full space-y-4">
-                                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                                    <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
-                                        <Clock className="h-4 w-4" />
-                                        <span className="text-sm font-medium">Refreshes in</span>
+                                <h1 className="text-4xl font-black tracking-tighter leading-[0.9] italic uppercase">
+                                    Kelola Presensi<br/>
+                                    <span className="text-blue-200/90 text-2xl not-italic">Kelas Hari Ini</span>
+                                </h1>
+                                <p className="text-blue-100/70 text-sm font-medium max-w-md leading-relaxed">Aktifkan sesi presensi dengan menampilkan kode QR agar siswa dapat mencatat kehadiran secara mandiri.</p>
+                            </div>
+                            
+                            <div className="flex flex-wrap gap-4">
+                                <div className="p-8 bg-white/10 backdrop-blur-xl rounded-[32px] border border-white/10 min-w-[160px] transition-all hover:bg-white/15 hover:scale-105 group/card">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200/80 mb-2">Status Sesi</p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.5)]"></div>
+                                        <p className="text-2xl font-black uppercase tracking-tight italic">Aktif</p>
                                     </div>
-                                    <span className="text-blue-600 dark:text-blue-400 font-bold tabular-nums">{timeLeft}s</span>
                                 </div>
-
-                                <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                                    <div
-                                        className="bg-blue-600 dark:bg-blue-500 h-full transition-all duration-1000 ease-linear"
-                                        style={{ width: `${(timeLeft / 120) * 100}%` }}
-                                    />
+                                <div className="p-8 bg-white/10 backdrop-blur-xl rounded-[32px] border border-white/10 min-w-[160px] transition-all hover:bg-white/15 hover:scale-105 group/card">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200/80 mb-2 text-center">Total Scan</p>
+                                    <p className="text-4xl font-black text-center tabular-nums italic">{attendance.length}</p>
                                 </div>
-                            </div>
-
-                            <div className="mt-6 flex items-center gap-4">
-                                <button
-                                    type="button"
-                                    onClick={(e) => { e.preventDefault(); generateQR(); }}
-                                    className="flex items-center gap-2 text-sm text-slate-400 hover:text-blue-600 transition-colors"
-                                >
-                                    <RefreshCw className="h-4 w-4" />
-                                    Regenerate
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={toggleFullscreen}
-                                    className="flex items-center gap-2 text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                                >
-                                    <Maximize2 className="h-4 w-4" />
-                                    Fullscreen
-                                </button>
                             </div>
                         </div>
                     </div>
 
+                    {/* QR Section - Bento Medium */}
+                    <div className="lg:col-span-2 space-y-8">
+                        <div className="bg-white dark:bg-slate-900 rounded-[40px] p-10 shadow-sm border border-slate-100 dark:border-slate-800 transition-all hover:shadow-2xl hover:shadow-slate-200/50 group">
+                            <div className="flex items-center justify-between mb-10">
+                                <div className="flex items-center gap-5">
+                                    <div className="p-5 bg-blue-50 dark:bg-blue-900/30 rounded-[24px] group-hover:scale-110 transition-transform duration-500">
+                                        <RefreshCw className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-black text-2xl text-slate-900 dark:text-white leading-tight uppercase tracking-tighter italic">Kode QR Presensi</h3>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">Siswa memindai kode ini untuk presensi</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={toggleFullscreen}
+                                    className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-900 dark:hover:bg-white text-slate-400 hover:text-white dark:hover:text-slate-900 rounded-[20px] transition-all duration-300 shadow-sm"
+                                >
+                                    <Maximize2 className="h-6 w-6" />
+                                </button>
+                            </div>
 
-                    <div className="lg:col-span-2 space-y-6 pt-10 border-t border-slate-200 dark:border-slate-800">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Rekap Absensi</h2>
+                            <div className="flex flex-col lg:flex-row items-center gap-12">
+                                <div ref={qrRef} className="relative group/qr">
+                                    <div className="absolute -inset-4 bg-linear-to-r from-blue-600 to-indigo-600 rounded-[48px] blur-2xl opacity-0 group-hover/qr:opacity-10 transition duration-1000"></div>
+                                    <div className="relative bg-white p-10 rounded-[40px] border border-slate-100 shadow-xl overflow-hidden group-hover/qr:scale-[1.02] transition-transform duration-500">
+                                        <QRCodeSVG value={qrValue} size={260} level="H" includeMargin={true} />
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 space-y-8 w-full">
+                                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 relative overflow-hidden">
+                                        <div className="flex items-center justify-between mb-4 relative z-10">
+                                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Refresh Otomatis</span>
+                                            <div className="flex items-center gap-2">
+                                                <Clock className="h-3 w-3 text-blue-600" />
+                                                <span className="text-blue-600 font-black tabular-nums text-lg">{timeLeft}s</span>
+                                            </div>
+                                        </div>
+                                        <div className="w-full bg-slate-200 dark:bg-slate-700 h-3 rounded-full overflow-hidden relative z-10">
+                                            <div
+                                                className="bg-linear-to-r from-blue-600 to-indigo-600 h-full transition-all duration-1000 ease-linear rounded-full"
+                                                style={{ width: `${(timeLeft / 30) * 100}%` }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={() => generateQR()}
+                                        className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-200 dark:shadow-none italic flex items-center justify-center gap-3"
+                                    >
+                                        <RefreshCw className="h-4 w-4" />
+                                        Segarkan Kode QR
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Controls Section - Bento Small */}
+                    <div className="space-y-8">
+                        <div className="bg-white dark:bg-slate-900 rounded-[40px] p-10 shadow-sm border border-slate-100 dark:border-slate-800 transition-all hover:shadow-2xl hover:shadow-slate-200/50 group">
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl group-hover:rotate-12 transition-transform">
+                                    <BookOpen className="h-6 w-6 text-indigo-600" />
+                                </div>
+                                <h3 className="font-black text-sm uppercase tracking-[0.2em] text-slate-900 dark:text-white italic">Sesi Pelajaran</h3>
+                            </div>
+                            
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 ml-1">Mata Pelajaran & Kelas</label>
+                                    <select
+                                        value={sessionName}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setSessionName(value);
+                                            if (value) {
+                                                const className = value.split(' - ')[0];
+                                                setSelectedClass(className);
+                                                setSelectedSession(value);
+                                            }
+                                        }}
+                                        className="w-full px-6 py-4 rounded-[24px] border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-none text-sm font-bold transition-all shadow-sm"
+                                    >
+                                        <option value="">-- Pilih dari jadwal --</option>
+                                        {scheduleSubjects.map((s, i) => (
+                                            <option key={i} value={`${s.class_name} - ${s.subject}`}>
+                                                {s.class_name} - {s.subject}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-linear-to-br from-indigo-600 to-blue-700 rounded-[40px] p-10 text-white shadow-xl shadow-blue-200/40 relative overflow-hidden group">
+                            <Users className="absolute -bottom-6 -right-6 h-32 w-32 opacity-10 group-hover:scale-110 transition-transform duration-700" />
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] mb-2 opacity-70">Real-time Info</h4>
+                            <p className="text-xl font-black leading-tight italic">Seluruh data presensi disinkronkan secara instan.</p>
+                        </div>
+                    </div>
+
+
+                    <div className="lg:col-span-3 space-y-10 pt-16 border-t border-slate-100 dark:border-slate-800">
+                        <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-8">
+                            <div className="space-y-2">
+                                <h2 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">Rekap Kehadiran</h2>
                                 {sessionName ? (
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <span className="bg-blue-600 dark:bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-bold">
+                                    <div className="flex flex-wrap items-center gap-3 mt-4">
+                                        <span className="bg-blue-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-500/20">
                                             {sessionName}
                                         </span>
-                                        <span className="text-slate-400 dark:text-slate-600">•</span>
-                                        <span className="text-slate-500 dark:text-slate-400 text-sm">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-slate-300"></div>
+                                        <span className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-[0.15em]">
                                             {new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                                         </span>
                                     </div>
                                 ) : (
-                                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-                                        Pilih kelas & mata pelajaran di atas untuk melihat daftar siswa
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                                        Silakan pilih sesi pelajaran untuk memantau kehadiran siswa.
                                     </p>
                                 )}
                             </div>
 
                             <div className="flex flex-wrap items-center gap-3">
-                                <input
-                                    type="date"
-                                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white py-2 px-3 rounded-lg text-sm focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
-                                    value={selectedDate}
-                                    onChange={(e) => setSelectedDate(e.target.value)}
-                                />
+                                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-[20px] shadow-sm flex items-center gap-2">
+                                    <input
+                                        type="date"
+                                        className="bg-transparent border-none text-slate-900 dark:text-white py-2 px-4 outline-none text-xs font-black uppercase tracking-widest cursor-pointer"
+                                        value={selectedDate}
+                                        onChange={(e) => setSelectedDate(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 mx-1 hidden md:block"></div>
 
                                 <button
                                     onClick={exportToExcel}
-                                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors"
+                                    className="flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-[0.15em] transition-all hover:scale-105 active:scale-95 shadow-lg shadow-emerald-500/20"
                                 >
                                     <Download className="h-4 w-4" />
-                                    Export Excel
+                                    Excel
                                 </button>
                                 
                                 <button
                                     onClick={exportToPDF}
-                                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors"
+                                    className="flex items-center gap-2.5 bg-rose-600 hover:bg-rose-700 text-white px-5 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-[0.15em] transition-all hover:scale-105 active:scale-95 shadow-lg shadow-rose-500/20"
                                 >
                                     <FileText className="h-4 w-4" />
-                                    Export PDF
+                                    PDF
                                 </button>
 
                                 <button
                                     onClick={exportMonthlyRecap}
                                     disabled={exportingMonthly}
-                                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                                    className="flex items-center gap-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-[0.15em] transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/10 disabled:opacity-50"
                                 >
                                     {exportingMonthly ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
                                     Rekap Bulanan
@@ -723,21 +768,24 @@ export default function TeacherDashboard() {
                         </div>
 
                         {selectedClass && (
-                            <div className="bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
+                            <div className="bg-white dark:bg-slate-900 rounded-[40px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 transition-all">
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800">
                                             <tr>
-                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nama Siswa</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">NIS</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Status</th>
+                                                <th className="px-10 py-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Data Siswa</th>
+                                                <th className="px-10 py-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Nomor Induk (NIS)</th>
+                                                <th className="px-10 py-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] text-right">Status Kehadiran</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                                             {classStudents.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={3} className="px-6 py-12 text-center text-slate-400 dark:text-slate-500">
-                                                        Tidak ada siswa di kelas ini.
+                                                    <td colSpan={3} className="px-10 py-20 text-center">
+                                                        <div className="flex flex-col items-center gap-3 opacity-30">
+                                                            <Users className="h-12 w-12" />
+                                                            <p className="text-sm font-black uppercase tracking-widest">Database Kosong</p>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ) : (
@@ -749,36 +797,44 @@ export default function TeacherDashboard() {
                                                     const isToday = selectedDate === todayStr;
 
                                                     return (
-                                                        <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                                            <td className="px-6 py-4">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="h-8 w-8 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center font-bold text-xs">
+                                                        <tr key={student.id} className="group hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all duration-300">
+                                                            <td className="px-10 py-6">
+                                                                <div className="flex items-center gap-5">
+                                                                    <div className="h-12 w-12 bg-linear-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center font-black text-sm shadow-sm group-hover:scale-110 transition-transform">
                                                                         {student.full_name?.charAt(0)}
                                                                     </div>
-                                                                    <span className="font-bold text-slate-900 dark:text-white">{student.full_name}</span>
+                                                                    <div>
+                                                                        <span className="font-black text-slate-900 dark:text-white block text-base tracking-tight">{student.full_name}</span>
+                                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Siswa Aktif</span>
+                                                                    </div>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-4 font-medium text-slate-500 dark:text-slate-400 font-mono text-sm">
-                                                                {student.nis}
+                                                            <td className="px-10 py-6">
+                                                                <span className="font-black text-slate-500 dark:text-slate-400 font-mono text-sm bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg">
+                                                                    {student.nis}
+                                                                </span>
                                                             </td>
-                                                            <td className="px-6 py-4 text-right">
+                                                            <td className="px-10 py-6 text-right">
                                                                 {isToday ? (
                                                                     <div className="relative inline-block">
                                                                         <select
                                                                             value={currentStatus || 'alpha'}
                                                                             onChange={(e) => updateStatus(student.id, e.target.value)}
-                                                                            className={`appearance-none px-4 py-2 rounded-full text-xs font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-800 ${statusInfo.color} dark:bg-opacity-20 border border-transparent dark:border-white/10`}
+                                                                            className={`appearance-none pl-6 pr-10 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 ${statusInfo.color} dark:bg-opacity-20 border-2 border-transparent hover:border-blue-500/30 transition-all shadow-sm`}
                                                                         >
                                                                             {STATUS_OPTIONS.map(opt => (
-                                                                                <option key={opt.value} value={opt.value} className="dark:bg-slate-900 text-black dark:text-white">{opt.label}</option>
+                                                                                <option key={opt.value} value={opt.value} className="dark:bg-slate-900 text-black dark:text-white font-bold">{opt.label}</option>
                                                                             ))}
                                                                         </select>
+                                                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                                                                            <ArrowUpRight className="h-3 w-3 rotate-90" />
+                                                                        </div>
                                                                     </div>
                                                                 ) : (
-                                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${statusInfo.color} dark:bg-opacity-20`}>
+                                                                    <span className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] ${statusInfo.color} dark:bg-opacity-20 shadow-sm`}>
                                                                         {currentStatus ? (
                                                                             <>
-                                                                                <CheckCircle className="h-3.5 w-3.5" />
+                                                                                <CheckCircle2 className="h-3.5 w-3.5" />
                                                                                 {statusInfo.label}
                                                                             </>
                                                                         ) : (

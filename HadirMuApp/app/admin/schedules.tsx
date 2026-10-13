@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, ScrollView, 
   ActivityIndicator, Alert, Modal, TextInput, Platform,
-  KeyboardAvoidingView
+  KeyboardAvoidingView, SectionList
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
@@ -191,69 +191,73 @@ export default function AdminSchedulesScreen() {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
-                {DAYS.map((day) => {
-                    const daySchedules = schedules.filter(s => s.day_of_week === day.value);
-                    if (daySchedules.length === 0) return null;
-
-                    return (
-                        <View key={day.value} style={styles.daySection}>
-                            <View style={styles.dayHeader}>
-                                <View style={styles.dayIcon}>
-                                    <Calendar size={14} color={colors.primary} />
-                                </View>
-                                <Text style={styles.dayLabel}>{day.label}</Text>
-                                <View style={styles.line} />
-                            </View>
-
-                            {daySchedules.map((sch) => (
-                                <View key={sch.id} style={styles.card}>
-                                    <View style={styles.cardHeader}>
-                                        <View style={styles.timeBadge}>
-                                            <Clock size={12} color={colors.primary} />
-                                            <Text style={styles.timeText}>
-                                                {sch.start_time?.slice(0, 5)} - {sch.end_time?.slice(0, 5)}
-                                            </Text>
-                                        </View>
-                                        <View style={styles.actionGroup}>
-                                            <TouchableOpacity onPress={() => openModal(sch)} style={styles.miniBtn}>
-                                                <Edit2 size={16} color={colors.textSub} />
-                                            </TouchableOpacity>
-                                            <TouchableOpacity onPress={() => handleDelete(sch.id)} style={styles.miniBtn}>
-                                                <Trash2 size={16} color={colors.danger} />
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-
-                                    <Text style={styles.subjectName}>{sch.subjects?.name || sch.subject}</Text>
-                                    
-                                    <View style={styles.cardFooter}>
-                                        <View style={styles.infoRow}>
-                                            <View style={styles.avatar}>
-                                                <Text style={styles.avatarText}>{sch.teachers?.full_name?.charAt(0)}</Text>
-                                            </View>
-                                            <View>
-                                                <Text style={styles.infoLabel}>PENGAJAR</Text>
-                                                <Text style={styles.infoVal}>{sch.teachers?.full_name}</Text>
-                                            </View>
-                                        </View>
-                                        <View style={styles.classBadge}>
-                                            <Text style={styles.classText}>{sch.classes?.name || sch.class_name}</Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            ))}
+            <SectionList
+                sections={DAYS.map(day => ({
+                    title: day.label,
+                    data: schedules.filter(s => s.day_of_week === day.value)
+                })).filter(section => section.data.length > 0)}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+                stickySectionHeadersEnabled={false}
+                initialNumToRender={10}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                removeClippedSubviews={true}
+                renderSectionHeader={({ section: { title } }) => (
+                    <View style={styles.dayHeader}>
+                        <View style={styles.dayIcon}>
+                            <Calendar size={14} color={colors.primary} />
                         </View>
-                    );
-                })}
-
-                {schedules.length === 0 && !loading && (
-                    <View style={styles.emptyBox}>
-                        <ActivityIndicator size="small" color={colors.textSub} style={{ marginBottom: 10 }} />
-                        <Text style={styles.emptyText}>Belum ada jadwal yang diatur.</Text>
+                        <Text style={styles.dayLabel}>{title}</Text>
+                        <View style={styles.line} />
                     </View>
                 )}
-            </ScrollView>
+                renderItem={({ item: sch }) => (
+                    <View style={styles.card}>
+                        <View style={styles.cardHeader}>
+                            <View style={styles.timeBadge}>
+                                <Clock size={12} color={colors.primary} />
+                                <Text style={styles.timeText}>
+                                    {sch.start_time?.slice(0, 5)} - {sch.end_time?.slice(0, 5)}
+                                </Text>
+                            </View>
+                            <View style={styles.actionGroup}>
+                                <TouchableOpacity onPress={() => openModal(sch)} style={styles.miniBtn}>
+                                    <Edit2 size={16} color={colors.textSub} />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => handleDelete(sch.id)} style={styles.miniBtn}>
+                                    <Trash2 size={16} color={colors.danger} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        <Text style={styles.subjectName}>{sch.subjects?.name || sch.subject}</Text>
+                        
+                        <View style={styles.cardFooter}>
+                            <View style={styles.infoRow}>
+                                <View style={styles.avatar}>
+                                    <Text style={styles.avatarText}>{sch.teachers?.full_name?.charAt(0)}</Text>
+                                </View>
+                                <View>
+                                    <Text style={styles.infoLabel}>PENGAJAR</Text>
+                                    <Text style={styles.infoVal}>{sch.teachers?.full_name}</Text>
+                                </View>
+                            </View>
+                            <View style={styles.classBadge}>
+                                <Text style={styles.classText}>{sch.classes?.name || sch.class_name}</Text>
+                            </View>
+                        </View>
+                    </View>
+                )}
+                ListEmptyComponent={
+                    !loading ? (
+                        <View style={styles.emptyBox}>
+                            <ActivityIndicator size="small" color={colors.textSub} style={{ marginBottom: 10 }} />
+                            <Text style={styles.emptyText}>Belum ada jadwal yang diatur.</Text>
+                        </View>
+                    ) : null
+                }
+            />
 
             {/* Modal */}
             <Modal visible={showModal} animationType="slide" transparent>

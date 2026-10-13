@@ -18,6 +18,8 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   // Form Data (Converted from Web)
@@ -37,6 +39,27 @@ export default function ProfileScreen() {
     fetchProfile();
   }, []);
 
+  useEffect(() => {
+    let interval: any;
+    if (profile && !isVerified) {
+      interval = setInterval(async () => {
+        const { data } = await supabase
+          .from(user?.role === 'student' ? 'students' : 'teachers')
+          .select('telegram_chat_id')
+          .eq('id', user?.id)
+          .single();
+        
+        if (data?.telegram_chat_id) {
+          setIsVerified(true);
+          setProfile((prev: any) => ({ ...prev, telegram_chat_id: data.telegram_chat_id }));
+          Alert.alert('Terverifikasi', 'Akun Anda berhasil terhubung dengan Telegram!');
+          clearInterval(interval);
+        }
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [profile, isVerified]);
+
   const fetchProfile = async () => {
     if (!user) return;
     setLoading(true);
@@ -50,6 +73,7 @@ export default function ProfileScreen() {
       if (error) throw error;
       if (data) {
         setProfile(data);
+        setIsVerified(!!data.telegram_chat_id);
         setFormData({
           id: data.id,
           full_name: data.full_name || '',
@@ -175,9 +199,22 @@ export default function ProfileScreen() {
   };
 
   const handleVerifyTelegram = async () => {
-    const token = Math.random().toString(36).substring(2, 15);
-    await supabase.from(user?.role === 'student' ? 'students' : 'teachers').update({ verification_token: token }).eq('id', user?.id);
-    Linking.openURL(`https://t.me/HadirMu_Bot?start=v_${token}`);
+    setIsGeneratingLink(true);
+    try {
+      const token = Math.random().toString(36).substring(2, 15);
+      const { error } = await supabase
+        .from(user?.role === 'student' ? 'students' : 'teachers')
+        .update({ verification_token: token })
+        .eq('id', user?.id);
+      
+      if (error) throw error;
+      
+      Linking.openURL(`https://t.me/HadirMu_Bot?start=v_${token}`);
+    } catch (err: any) {
+      Alert.alert('Error', 'Gagal membuat tautan verifikasi: ' + err.message);
+    } finally {
+      setIsGeneratingLink(false);
+    }
   };
   const styles = createStyles(colors);
 
@@ -218,21 +255,41 @@ export default function ProfileScreen() {
         </Text>
       </View>
 
-      {/* 2. Telegram Verification Alert (If not verified) */}
-      {!profile?.telegram_chat_id && (
-        <View style={[styles.alertBox, { backgroundColor: colors.info + '10', borderColor: colors.info + '30' }]}>
-          <View style={[styles.alertIcon, { backgroundColor: colors.info + '20' }]}>
-            <Send size={20} color={colors.info} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.alertTitle, { color: colors.text }]}>Verifikasi Telegram</Text>
-            <Text style={[styles.alertSub, { color: colors.textSub }]}>Hubungkan akun Anda untuk notifikasi real-time.</Text>
-          </View>
-          <TouchableOpacity style={[styles.alertBtn, { backgroundColor: colors.info }]} onPress={handleVerifyTelegram}>
-            <Text style={styles.alertBtnText}>Hubungkan</Text>
-          </TouchableOpacity>
+      {/* 2. Telegram Verification Alert */}
+      <View style={[styles.alertBox, { 
+        backgroundColor: isVerified ? colors.success + '10' : colors.info + '10', 
+        borderColor: isVerified ? colors.success + '30' : colors.info + '30' 
+      }]}>
+        <View style={[styles.alertIcon, { backgroundColor: isVerified ? colors.success + '20' : colors.info + '20' }]}>
+          <Send size={20} color={isVerified ? colors.success : colors.info} />
         </View>
-      )}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.alertTitle, { color: colors.text }]}>
+            {isVerified ? 'Telegram Terhubung' : 'Verifikasi Telegram'}
+          </Text>
+          <Text style={[styles.alertSub, { color: colors.textSub }]}>
+            {isVerified ? 'Notifikasi kehadiran akan dikirim ke Telegram.' : 'Hubungkan akun Anda untuk notifikasi real-time.'}
+          </Text>
+        </View>
+        {!isVerified && (
+          <TouchableOpacity 
+            style={[styles.alertBtn, { backgroundColor: colors.info }]} 
+            onPress={handleVerifyTelegram}
+            disabled={isGeneratingLink}
+          >
+            {isGeneratingLink ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.alertBtnText}>Hubungkan</Text>
+            )}
+          </TouchableOpacity>
+        )}
+        {isVerified && (
+          <View style={[styles.statusBadge, { backgroundColor: colors.success + '20' }]}>
+            <Text style={[styles.statusText, { color: colors.success }]}>AKTIF</Text>
+          </View>
+        )}
+      </View>
 
       {/* 3. Account Settings (Ported from Web) */}
       <View style={styles.section}>

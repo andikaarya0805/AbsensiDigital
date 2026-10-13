@@ -5,20 +5,18 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { getDeviceId } from '@/lib/utils';
-import Scanner from '@/components/Scanner';
+import Link from 'next/link';
 import {
     CheckCircle2,
-    XCircle,
-    User,
-    LogOut,
     ShieldCheck,
     ShieldAlert,
-    Settings,
-    BellRing,
-    Loader2,
-    Moon,
-    Sun,
-    Send
+    Send,
+    GraduationCap,
+    BookOpen,
+    Clock,
+    ArrowUpRight,
+    ScanLine,
+    BellRing
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 
@@ -35,8 +33,6 @@ export default function StudentDashboard() {
     const router = useRouter();
     const [user, setUser] = useState<StudentSession | null>(null);
     const [profile, setProfile] = useState<any>(null);
-    const [status, setStatus] = useState<'idle' | 'scanning' | 'success' | 'error'>('idle');
-    const [message, setMessage] = useState('');
     const supabase = createClient();
     const { theme, toggleTheme } = useTheme();
 
@@ -143,107 +139,10 @@ export default function StudentDashboard() {
         }
     };
 
-    /**
-     * Fetches current GPS coordinates.
-     */
-    const getCurrentLocation = (): Promise<{ lat: number; lng: number }> => {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('Browser Anda tidak mendukung lokasi (GPS)'));
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-                (err) => {
-                    let msg = 'Gagal mengambil lokasi.';
-                    if (err.code === 1) msg = 'Harap izinkan akses lokasi (GPS) untuk presensi.';
-                    reject(new Error(msg));
-                },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-            );
-        });
-    };
-
-    /**
-     * Processes the scanned QR code content.
-     * Validates: Format, Secret, Timestamp, and Device ID.
-     */
-    const handleScan = useCallback(async (decodedText: string) => {
-        if (!isVerified) {
-            showToast("Harap verifikasi akun Telegram Anda terlebih dahulu!", "error");
-            return;
-        }
-
-        if (status === 'success' || status === 'scanning') return;
-        if (!user) {
-            setStatus('error');
-            setMessage('Session tidak ditemukan. Silakan login ulang.');
-            return;
-        }
-
-        setStatus('scanning');
-        setMessage('Sedang memproses...');
-
-        try {
-            // 1. Get Location
-            let location = { lat: 0, lng: 0 };
-            try {
-                location = await getCurrentLocation();
-            } catch (locErr: any) {
-                throw locErr;
-            }
-
-            // 2. Security Check: Web Device Identity
-            const currentDeviceId = getDeviceId();
-            if (profile?.web_device_id && profile.web_device_id !== currentDeviceId) {
-                throw new Error('Perangkat ini tidak terdaftar untuk akun Anda.');
-            }
-
-            // 3. QR Format Pre-check (Get Session Name)
-            const parts = decodedText.split('_');
-            const sessionName = parts.length >= 5 ? parts.slice(4).join('_') : 'DEFAULT';
-
-            // 4. Call Backend API (Centralized logic for geofencing, secret, and notification)
-            const response = await fetch('/api/attendance/scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    studentId: user.id,
-                    sessionName: sessionName,
-                    lat: location.lat,
-                    lng: location.lng,
-                    qrText: decodedText
-                })
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.error || 'Gagal mencatat presensi');
-            }
-
-            setStatus('success');
-            setMessage(result.message || 'Presensi berhasil dicatat!');
-            showToast("Presensi Berhasil!", "success");
-
-        } catch (err: any) {
-            console.error("HandleScan Error:", err.message);
-            setStatus('error');
-            setMessage(err.message);
-
-            // Auto-reset after 3 seconds
-            setTimeout(() => {
-                setStatus('idle');
-            }, 5000);
-        }
-    }, [user, status, profile, isVerified]);
-
     if (!profile) return <div className="p-8 text-center text-slate-500">Loading...</div>;
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-12 relative overflow-hidden transition-colors duration-300">
-
+        <>
             {/* Premium Toast Notification */}
             {toast && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-100 w-full max-w-xs animate-in slide-in-from-top-4 fade-in duration-300">
@@ -303,165 +202,124 @@ export default function StudentDashboard() {
                 </div>
             )}
 
-
-            {/* Header */}
-            <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 sticky top-0 z-10 transition-colors duration-300">
-                <div className="max-w-md mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        {/* Profile Avatar Trigger */}
-                        <div onClick={() => setShowProfileMenu(true)} className="relative cursor-pointer hover:opacity-80 transition-opacity">
-                            <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-800 shadow-sm">
-                                {profile.avatar_url ? (
-                                    <img src={profile.avatar_url} alt="Profile" className="h-full w-full object-cover" />
-                                ) : (
-                                    <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                )}
+            <div className="max-w-4xl mx-auto mt-2 space-y-6 pb-12">
+                {/* School Welcome Section - Premium Bento Header */}
+                <div className="relative overflow-hidden bg-linear-to-br from-blue-700 via-blue-600 to-indigo-800 rounded-[40px] p-10 text-white shadow-2xl shadow-blue-500/20 dark:shadow-none transition-all duration-700 group">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-150 transition-transform duration-1000"></div>
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full -ml-32 -mb-32 blur-3xl group-hover:scale-150 transition-transform duration-1000"></div>
+                    
+                    <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                        <div className="space-y-4">
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-xl rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-white/10 shadow-inner">
+                                <GraduationCap className="h-3.5 w-3.5 text-blue-200" />
+                                Tahun Pelajaran 2025/2026
                             </div>
-                            <div className="absolute -bottom-1 -right-1 bg-green-500 h-4 w-4 rounded-full border-2 border-white dark:border-slate-800"></div>
+                            <div className="space-y-1">
+                                <h1 className="text-4xl font-black tracking-tighter leading-none italic">
+                                    Selamat Belajar, <br/>
+                                    <span className="text-transparent bg-clip-text bg-linear-to-r from-white to-blue-200">{profile.full_name.split(' ')[0]}!</span>
+                                </h1>
+                                <p className="text-blue-100/70 text-sm font-medium tracking-wide">Teruslah melangkah, masa depan cerah menantimu.</p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="font-bold text-slate-900 dark:text-white leading-tight">{profile.full_name}</h2>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">NIS: {profile.nis}</p>
+                        
+                        <div className="flex items-center gap-4">
+                            <div className="relative group/stat">
+                                <div className="absolute inset-0 bg-white/20 rounded-3xl blur-xl opacity-0 group-hover/stat:opacity-100 transition-opacity"></div>
+                                <div className="relative text-center p-5 bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/10 min-w-[100px] shadow-xl">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-200 mb-1">Kehadiran</p>
+                                    <p className="text-3xl font-black tracking-tighter">98<span className="text-sm opacity-60 ml-0.5">%</span></p>
+                                </div>
+                            </div>
+                            <div className="relative group/stat">
+                                <div className="absolute inset-0 bg-white/20 rounded-3xl blur-xl opacity-0 group-hover/stat:opacity-100 transition-opacity"></div>
+                                <div className="relative text-center p-5 bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/10 min-w-[100px] shadow-xl">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-200 mb-1">Poin</p>
+                                    <p className="text-3xl font-black tracking-tighter">120</p>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    {/* Main Action Card - Bento Large (8 Cols) */}
+                    <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-sm border border-slate-100 dark:border-slate-800 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/5 h-full flex flex-col justify-center items-center text-center group">
+                        <div className="p-6 bg-blue-50 dark:bg-blue-900/30 rounded-[32px] mb-8 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500">
+                            <ScanLine className="h-16 w-16 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter italic mb-4">Mulai Presensi</h2>
+                        <p className="text-slate-500 dark:text-slate-400 mb-10 max-w-sm text-sm font-medium">Buka pemindai dan arahkan kamera perangkat Anda ke QR Code yang ditampilkan oleh guru untuk mencatat kehadiran dengan cepat.</p>
+                        <Link href="/dashboard/student/scan" className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-500/20 inline-flex items-center gap-3">
+                            <ScanLine className="h-5 w-5" />
+                            Buka Scanner
+                        </Link>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={toggleTheme}
-                            className="p-2.5 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-yellow-400 rounded-xl transition-all border-none"
-                            title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-                        >
-                            {theme === 'light' ? (
-                                <Moon className="h-6 w-6" />
-                            ) : (
-                                <Sun className="h-6 w-6" />
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setShowProfileMenu(true)}
-                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-blue-600"
-                        >
-                            <Settings className="h-6 w-6" />
-                        </button>
+                    {/* Info Column - Bento Small Stack (4 Cols) */}
+                    <div className="lg:col-span-4 space-y-6 flex flex-col h-full">
+                        {/* Class Info */}
+                        <div className="bg-linear-to-br from-indigo-600 to-blue-700 rounded-[40px] p-8 text-white shadow-xl shadow-indigo-500/20 transition-all duration-500 hover:scale-[1.03] relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:rotate-12 transition-transform duration-500">
+                                <BookOpen className="h-24 w-24" />
+                            </div>
+                            <div className="relative z-10">
+                                <div className="flex items-center justify-between mb-8">
+                                    <div className="p-3 bg-white/20 backdrop-blur-xl rounded-2xl shadow-inner border border-white/10">
+                                        <BookOpen className="h-6 w-6" />
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Info Kelas</span>
+                                </div>
+                                <h4 className="text-3xl font-black leading-none tracking-tighter uppercase italic">{profile.class}</h4>
+                                <div className="mt-4 flex items-center gap-2">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400"></div>
+                                    <p className="text-xs font-black uppercase tracking-widest text-indigo-100/80">Siswa Aktif</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Schedule Info */}
+                        <div className="flex-1 bg-white dark:bg-slate-900 rounded-[40px] p-8 border border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-500 hover:shadow-2xl hover:shadow-slate-200/50 flex flex-col">
+                            <div className="flex items-center justify-between mb-8">
+                                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                    <Clock className="h-6 w-6 text-slate-400" />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Jadwal</span>
+                            </div>
+                            
+                            <div className="space-y-8 flex-1 flex flex-col justify-center">
+                                <div className="relative pl-6 border-l-2 border-blue-600">
+                                    <div className="absolute -left-[5px] top-0 h-2 w-2 rounded-full bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)]"></div>
+                                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-1">Sedang Berlangsung</p>
+                                    <h5 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">07:15 - 08:45</h5>
+                                    <p className="text-xs font-bold text-slate-500 mt-0.5">Matematika Wajib</p>
+                                </div>
+                                
+                                <div className="relative pl-6 border-l-2 border-slate-200 dark:border-slate-800 opacity-60">
+                                    <div className="absolute -left-[5px] top-0 h-2 w-2 rounded-full bg-slate-200 dark:bg-slate-800"></div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Mendatang</p>
+                                    <h5 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">09:00 - 10:30</h5>
+                                    <p className="text-xs font-bold text-slate-500 mt-0.5">Bahasa Indonesia</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                </div>
+
+                {/* Bottom Tip - Bento Banner */}
+                <div className="group relative overflow-hidden flex items-center gap-4 px-8 py-6 bg-slate-900/5 dark:bg-white/5 rounded-[32px] border border-slate-100 dark:border-white/5 transition-all duration-500 hover:bg-slate-900/10">
+                    <div className="p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-sm group-hover:rotate-12 transition-transform duration-500">
+                        <BellRing className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-0.5 italic">Tips Presensi</p>
+                        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Pastikan kamera fokus pada <span className="text-blue-600 font-black">QR Code Guru</span> untuk presensi yang cepat dan akurat.
+                        </p>
+                    </div>
+                    <ArrowUpRight className="h-5 w-5 text-slate-300 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0" />
                 </div>
             </div>
-
-            {/* Profile Menu Sheet/Modal */}
-            {
-                showProfileMenu && (
-                    <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" onClick={() => setShowProfileMenu(false)}>
-                        <div
-                            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 space-y-4 animate-in slide-in-from-bottom-10"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
-                            <h3 className="text-lg font-bold text-slate-900">Menu Akun</h3>
-
-                            <div className="space-y-2">
-                                <button
-                                    onClick={() => router.push('/dashboard/student/edit')}
-                                    className="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"
-                                >
-                                    <span className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg"><User className="h-5 w-5 text-blue-600 dark:text-blue-400" /></span>
-                                    <div className="flex-1">
-                                        <h4 className="font-semibold text-slate-900 dark:text-white">Edit Profil</h4>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">Ganti foto & data diri</p>
-                                    </div>
-                                </button>
-
-                                <button
-                                    onClick={() => {
-                                        localStorage.removeItem('student_session');
-                                        window.location.href = '/login';
-                                    }}
-                                    className="w-full flex items-center gap-3 p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors text-left group"
-                                >
-                                    <span className="p-2 bg-red-100 rounded-lg group-hover:bg-red-200"><LogOut className="h-5 w-5 text-red-600" /></span>
-                                    <div className="flex-1">
-                                        <h4 className="font-semibold text-red-700">Keluar</h4>
-                                        <p className="text-xs text-red-500">Log out dari perangkat ini</p>
-                                    </div>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-
-            <main className="max-w-md mx-auto px-6 mt-6 space-y-6">
-
-                {/* Status Card */}
-                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4 transition-colors">
-                    <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-2xl ${isVerified ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-amber-50 dark:bg-amber-900/30'}`}>
-                            {isVerified ? <ShieldCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" /> : <ShieldAlert className="h-6 w-6 text-amber-600 dark:text-amber-400" />}
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-slate-900 dark:text-white">{isVerified ? 'Akun Terverifikasi' : 'Belum Verifikasi'}</h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{isVerified ? 'Fitur presensi aktif' : 'Hubungkan Telegram'}</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => router.push('/dashboard/student/edit')}
-                        className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors group"
-                        title="Edit Profil"
-                    >
-                        <User className="h-5 w-5 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
-                    </button>
-                </div>
-
-                {/* Action Area */}
-                {status === 'success' ? (
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-10 text-center animate-in zoom-in-95 duration-300">
-                        <div className="bg-emerald-100 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <CheckCircle2 className="h-10 w-10 text-emerald-600" />
-                        </div>
-                        <h2 className="text-xl font-bold text-slate-900">Success!</h2>
-                        <p className="text-slate-600 mt-2">{message}</p>
-                        <button
-                            onClick={() => setStatus('idle')}
-                            className="mt-6 text-sm font-semibold text-blue-600 hover:text-blue-700"
-                        >
-                            Scan Another?
-                        </button>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {/* Only show scanner if Verified */}
-                        {isVerified ? (
-                            <>
-                                <Scanner onScanSuccess={handleScan} />
-                                {status === 'error' && (
-                                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
-                                        <div className="flex items-center gap-3">
-                                            <XCircle className="h-5 w-5 text-red-600" />
-                                            <p className="text-sm text-red-600 font-medium">{message}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                setStatus('idle');
-                                                window.location.reload();
-                                            }}
-                                            className="text-xs font-bold text-red-700 underline underline-offset-2 w-fit"
-                                        >
-                                            Coba Lagi
-                                        </button>
-                                    </div>
-                                )}
-                                <p className="text-center text-xs text-slate-600 dark:text-slate-400 font-bold">
-                                    Arahkan kamera ke kode QR guru
-                                </p>
-                            </>
-                        ) : (
-                            <div className="h-64 bg-slate-100 rounded-2xl flex flex-col items-center justify-center text-slate-400">
-                                <ShieldAlert className="h-10 w-10 mb-2" />
-                                <p className="text-sm font-medium">Scanner Terkunci</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </main>
-        </div >
+        </>
     );
 }

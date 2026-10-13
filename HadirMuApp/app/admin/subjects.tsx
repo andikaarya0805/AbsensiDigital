@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, FlatList } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -149,37 +149,49 @@ export default function AdminSubjectsScreen() {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.listContent}>
-                {loading ? (
-                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
-                ) : filteredSubjects.length > 0 ? (
-                    <View style={styles.gridContainer}>
-                        {filteredSubjects.map((subj) => (
-                            <View key={subj.id} style={styles.subjectCard}>
-                                <View style={styles.iconBox}>
-                                    <Book size={20} color={colors.info} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.subjectName} numberOfLines={2}>{subj.name}</Text>
-                                    <View style={styles.actionRow}>
-                                        <TouchableOpacity onPress={() => openModal(subj)} style={styles.miniAction}>
-                                            <Edit2 size={12} color={colors.primary} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity onPress={() => handleDelete(subj)} style={styles.miniAction}>
-                                            <Trash2 size={12} color={colors.danger} />
-                                        </TouchableOpacity>
-                                    </View>
+            {loading && subjects.length === 0 ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 }}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredSubjects}
+                    keyExtractor={(item) => item.id}
+                    numColumns={2}
+                    columnWrapperStyle={{ gap: 12 }}
+                    contentContainerStyle={styles.listContent}
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={10}
+                    windowSize={5}
+                    removeClippedSubviews={true}
+                    renderItem={({ item: subj }) => (
+                        <View style={styles.subjectCard}>
+                            <View style={styles.iconBox}>
+                                <Book size={20} color={colors.info} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.subjectName} numberOfLines={2}>{subj.name}</Text>
+                                <View style={styles.actionRow}>
+                                    <TouchableOpacity onPress={() => openModal(subj)} style={styles.miniAction}>
+                                        <Edit2 size={12} color={colors.primary} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => handleDelete(subj)} style={styles.miniAction}>
+                                        <Trash2 size={12} color={colors.danger} />
+                                    </TouchableOpacity>
                                 </View>
                             </View>
-                        ))}
-                    </View>
-                ) : (
-                    <View style={styles.emptyContainer}>
-                        <FileText size={48} color={colors.border} />
-                        <Text style={styles.emptyText}>Tidak ada mata pelajaran</Text>
-                    </View>
-                )}
-            </ScrollView>
+                        </View>
+                    )}
+                    ListEmptyComponent={
+                        !loading ? (
+                            <View style={styles.emptyContainer}>
+                                <FileText size={48} color={colors.border} />
+                                <Text style={styles.emptyText}>Tidak ada mata pelajaran</Text>
+                            </View>
+                        ) : null
+                    }
+                />
+            )}
 
             {/* Form Modal */}
             <Modal visible={showModal} animationType="slide" transparent={true}>
@@ -318,7 +330,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         gap: 12,
     },
     subjectCard: {
-        width: '48.2%',
+        flex: 1,
         backgroundColor: colors.card,
         borderRadius: 24,
         padding: 16,

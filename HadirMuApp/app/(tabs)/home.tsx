@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Image, Alert, Modal, Linking, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Image, Alert, Modal, Linking, ActivityIndicator, Dimensions, FlatList } from 'react-native';
 import { RADIUS, SHADOW } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -15,7 +15,8 @@ import {
 import QRCode from 'react-native-qrcode-svg';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
-import { documentDirectory, writeAsStringAsync } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system';
+const { documentDirectory, EncodingType, writeAsStringAsync } = FileSystem;
 import { shareAsync } from 'expo-sharing';
 import { validateQRPayload } from '../../lib/qr';
 import * as Device from 'expo-device';
@@ -29,14 +30,16 @@ const getStatusOptions = (colors: any) => [
   { value: 'sakit', label: 'SAKIT', color: colors.warning },
   { value: 'alpha', label: 'ALPHA', color: colors.danger },
 ];
+import { CONFIG } from '../../constants/Config';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://absensi-digital-i87xnkg8j-andikaarya0805s-projects.vercel.app';
+const API_URL = CONFIG.API_URL;
 
 export default function HomeScreen() {
   const { colors, theme, setTheme, isDark } = useTheme();
   const STATUS_OPTIONS = getStatusOptions(colors);
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [showAcademicBanner, setShowAcademicBanner] = useState(true);
   const [refreshing, setRefreshing] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -82,22 +85,22 @@ export default function HomeScreen() {
     try {
       // 1. Fetch Profile
       const { data: profileData } = await supabase
-        .from(user.role === 'student' ? 'students' : 'teachers')
+        .from(user?.role === 'student' ? 'students' : 'teachers')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', user?.id)
         .single();
       
       if (profileData) {
         setProfile(profileData);
-        setIsVerified(user.role !== 'student' || !!profileData.telegram_chat_id);
+        setIsVerified(user?.role !== 'student' || !!profileData.telegram_chat_id);
       } else {
-        setIsVerified(user.role !== 'student');
+        setIsVerified(user?.role !== 'student');
       }
 
       // 2. Role Specific Init
-      if (user.role === 'teacher') {
+      if (user?.role === 'teacher') {
         fetchTeacherSchedule();
-      } else if (user.role === 'admin') {
+      } else if (user?.role === 'admin') {
         fetchAdminStats();
       }
     } catch (err) {
@@ -146,6 +149,75 @@ export default function HomeScreen() {
       setScheduleSubjects(unique);
     }
   };
+
+  // --- Student Dashboard Components (MyUnpam Inspired) ---
+  const AcademicBanner = () => {
+    if (!showAcademicBanner) return null;
+    return (
+      <View style={styles.academicBanner}>
+        <View style={styles.bannerIcon}>
+          <GraduationCap size={20} color="#fff" />
+        </View>
+        <View style={styles.bannerContent}>
+          <Text style={styles.bannerTitle}>Status Akademik Aktif</Text>
+          <Text style={styles.bannerText}>Tahun Pelajaran 2024/2025 • Kelas XII Teknik Komputer</Text>
+        </View>
+        <TouchableOpacity style={styles.bannerClose} onPress={() => setShowAcademicBanner(false)}>
+          <X size={16} color={colors.textSub} />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const AttendanceStatsCard = () => (
+    <View style={styles.statsBentoGrid}>
+      <View style={[styles.statsBentoItem, { backgroundColor: colors.success + '10' }]}>
+        <View style={[styles.statsBentoIcon, { backgroundColor: colors.success }]}>
+          <CheckCircle2 size={16} color="#fff" />
+        </View>
+        <View>
+          <Text style={styles.statsBentoVal}>95%</Text>
+          <Text style={styles.statsBentoLabel}>Kehadiran</Text>
+        </View>
+      </View>
+      <View style={[styles.statsBentoItem, { backgroundColor: colors.warning + '10' }]}>
+        <View style={[styles.statsBentoIcon, { backgroundColor: colors.warning }]}>
+          <Calendar size={16} color="#fff" />
+        </View>
+        <View>
+          <Text style={styles.statsBentoVal}>2</Text>
+          <Text style={styles.statsBentoLabel}>Izin/Sakit</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const StudentActivityList = () => (
+    <View style={styles.activitySection}>
+      <View style={styles.sectionHeader}>
+        <Megaphone size={18} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Informasi & Aktivitas</Text>
+      </View>
+      <View style={styles.activityCard}>
+        {[
+          { title: 'Presensi Mata Pelajaran Berhasil', time: '10:30', icon: CheckCircle2, color: colors.success },
+          { title: 'Jadwal Pengganti: Dasar Jaringan', time: 'Besok, 08:00', icon: Calendar, color: colors.info },
+          { title: 'Panduan Siswa Tahun Pelajaran Baru', time: 'Download', icon: Download, color: colors.primary },
+        ].map((item, i) => (
+          <View key={i} style={[styles.activityRow, i === 2 && { borderBottomWidth: 0 }]}>
+            <View style={[styles.activityIcon, { backgroundColor: item.color + '15' }]}>
+              <item.icon size={16} color={item.color} />
+            </View>
+            <View style={styles.activityInfo}>
+              <Text style={styles.activityTitle}>{item.title}</Text>
+              <Text style={styles.activityTime}>{item.time}</Text>
+            </View>
+            <ChevronRight size={16} color={colors.textMuted} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
 
   const generateQR = useCallback(() => {
     const timestamp = Math.floor(Date.now() / (REFRESH_INTERVAL * 1000));
@@ -257,9 +329,8 @@ export default function HomeScreen() {
 
     const filename = `Absensi_${selectedClass}_${today}.csv`;
     const filepath = `${documentDirectory}${filename}`;
-
     try {
-      await writeAsStringAsync(filepath, csv, { encoding: 'utf8' });
+      await writeAsStringAsync(filepath, csv, { encoding: EncodingType.UTF8 });
       await shareAsync(filepath);
     } catch (e) {
       Alert.alert('Error', 'Gagal mengekspor data.');
@@ -299,10 +370,9 @@ export default function HomeScreen() {
 
       const monthName = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(now);
       const filename = `Rekap_Bulanan_${selectedClass}_${monthName}.csv`;
-      const filepath = `${documentDirectory}${filename}`;
-
-      await writeAsStringAsync(filepath, csv, { encoding: 'utf8' });
-      await shareAsync(filepath);
+      const fileUri = (documentDirectory || "") + filename;
+      await writeAsStringAsync(fileUri, csv, { encoding: EncodingType.UTF8 });
+      await shareAsync(fileUri);
     } catch (e: any) {
       Alert.alert('Error', 'Gagal rekap bulanan: ' + e.message);
     } finally {
@@ -379,10 +449,10 @@ export default function HomeScreen() {
     };
 
   useEffect(() => {
-    let interval: string | number | NodeJS.Timeout | undefined;
+    let interval: any;
     if (user?.role === 'student' && isVerified === false) {
       interval = setInterval(async () => {
-        const { data } = await supabase.from('students').select('telegram_chat_id').eq('id', user.id).single();
+        const { data } = await supabase.from('students').select('telegram_chat_id').eq('id', user?.id).single();
         if (data?.telegram_chat_id) {
           setIsVerified(true);
           setProfile((prev: any) => ({ ...prev, telegram_chat_id: data.telegram_chat_id }));
@@ -398,6 +468,301 @@ export default function HomeScreen() {
     await supabase.from('students').update({ verification_token: token }).eq('id', user?.id);
     Linking.openURL(`https://t.me/HadirMu_Bot?start=v_${token}`);
   };
+
+  // --- Render Functions for FlatList ---
+  const renderHeader = () => (
+    <View style={{ paddingBottom: 10 }}>
+      {CONFIG.DEBUG_MODE && (
+        <View style={styles.debugBanner}>
+          <ShieldAlert size={20} color={colors.warning} />
+          <Text style={styles.debugText}>DEBUG MODE: DEVICE ID BYPASS AKTIF</Text>
+        </View>
+      )}
+
+      {/* Profile Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.avatarWrapper} onPress={() => setShowProfileMenu(true)}>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImg} />
+            ) : (
+              <User size={24} color={colors.primary} />
+            )}
+            <View style={[styles.statusDot, { backgroundColor: isVerified ? colors.success : colors.warning }]} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.greeting}>Selamat datang,</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.name}>{profile?.full_name || user?.fullName}</Text>
+              {user?.role === 'admin' && (
+                <View style={styles.adminBadge}>
+                  <ShieldCheck size={8} color="#fff" />
+                  <Text style={styles.adminBadgeText}>ADMIN</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')} style={styles.iconBtn}>
+            {theme === 'dark' ? <Sun size={20} color={colors.warning} /> : <Moon size={20} color={colors.textSub} />}
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => Alert.alert('Logout', 'Yakin ingin keluar?', [
+              { text: 'Batal', style: 'cancel' },
+              { text: 'Keluar', style: 'destructive', onPress: logout }
+            ])} 
+            style={styles.iconBtn}
+          >
+            <LogOut size={20} color={colors.danger} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* --- ADMIN DASHBOARD --- */}
+      {user?.role === 'admin' && (
+        <View style={styles.adminLayout}>
+           <View style={styles.statsGrid}>
+              {[
+                { label: 'Guru', val: adminStats.teachers, color: colors.primary, icon: Users },
+                { label: 'Siswa', val: adminStats.students, color: colors.success, icon: GraduationCap },
+                { label: 'Kelas', val: adminStats.classes, color: colors.warning, icon: BookOpen },
+                { label: 'Absen Hari Ini', val: adminStats.todayAttendance, color: colors.info, icon: CalendarCheck }
+              ].map((stat, i) => (
+                <View key={i} style={[styles.statCard, { borderLeftColor: stat.color }]}>
+                  <View style={[styles.statIconBox, { backgroundColor: stat.color + '15' }]}>
+                    <stat.icon size={18} color={stat.color} />
+                  </View>
+                  <Text style={styles.statVal}>{stat.val}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+              ))}
+           </View>
+
+           <View style={styles.sectionHeader}>
+             <ShieldCheck size={18} color={colors.primary} />
+             <Text style={styles.tableTitle}>Control Panel</Text>
+           </View>
+
+           <View style={styles.bentoGrid}>
+             {[
+               { name: 'Siswa', desc: 'Kelola data siswa', icon: Users, path: '/admin/students', size: 'small', color: colors.primary },
+               { name: 'Guru', desc: 'Kelola data guru', icon: User, path: '/admin/teachers', size: 'small', color: colors.success },
+               { name: 'Kelas', desc: 'Daftar & wali kelas', icon: GraduationCap, path: '/admin/classes', size: 'large', color: colors.warning },
+               { name: 'Mata Pelajaran', desc: 'Kurikulum aktif', icon: BookOpen, path: '/admin/subjects', size: 'small', color: colors.info },
+               { name: 'Jadwal', desc: 'Sesi & ruang', icon: Calendar, path: '/admin/schedules', size: 'small', color: colors.danger }
+             ].map((item: any, i) => (
+               <TouchableOpacity 
+                 key={i} 
+                 style={[styles.bentoItem, item.size === 'small' ? styles.bentoItemSmall : styles.bentoItemLarge]}
+                 onPress={() => router.push(item.path)}
+               >
+                 <View style={[styles.bentoIconBox, { backgroundColor: item.color + '15' }]}>
+                   <item.icon size={22} color={item.color} />
+                 </View>
+                 <View style={styles.bentoContent}>
+                   <Text style={styles.bentoName}>{item.name}</Text>
+                   <Text style={styles.bentoDesc}>{item.desc}</Text>
+                 </View>
+                 <ChevronRight size={16} color={colors.textMuted} style={styles.bentoArrow} />
+               </TouchableOpacity>
+             ))}
+           </View>
+        </View>
+      )}
+
+      {/* --- TEACHER DASHBOARD (Header Only) --- */}
+      {user?.role === 'teacher' && (
+        <View style={styles.teacherLayout}>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <BookOpen size={18} color={colors.primary} />
+              <Text style={styles.cardTitle}>Sesi Pembelajaran Aktif</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sessionScroll}>
+              {scheduleSubjects.map((s, idx) => (
+                <TouchableOpacity 
+                  key={idx} 
+                  style={[styles.sessionChip, sessionName === `${s.class_name} - ${s.subject}` && styles.activeChip]}
+                  onPress={() => {
+                    setSessionName(`${s.class_name} - ${s.subject}`);
+                    setSelectedClass(s.class_name);
+                  }}
+                >
+                  <Text style={[styles.chipText, sessionName === `${s.class_name} - ${s.subject}` && styles.activeChipText]}>
+                    {s.class_name} • {s.subject}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <QrCode size={18} color={colors.primary} />
+                <Text style={styles.cardTitle}>Attendance QR</Text>
+              </View>
+              <View style={styles.qrContent}>
+                 <View style={styles.qrContainer}>
+                   <QRCode value={qrValue || 'HADIR_INACTIVE'} size={180} />
+                 </View>
+                 <View style={styles.qrMeta}>
+                   <View style={styles.timerBox}>
+                      <Clock size={16} color={colors.textSub} />
+                      <Text style={styles.timerText}>{timeLeft}s</Text>
+                   </View>
+                   <View style={styles.miniProgress}>
+                      <View style={[styles.miniFill, { width: `${(timeLeft/30)*100}%` }]} />
+                   </View>
+                   <View style={styles.qrActions}>
+                      <TouchableOpacity style={styles.qrBtn} onPress={generateQR}>
+                        <RefreshCw size={18} color={colors.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.qrBtn, { backgroundColor: colors.primary }]} onPress={() => setIsFullscreen(true)}>
+                        <Maximize2 size={18} color="#fff" />
+                      </TouchableOpacity>
+                   </View>
+                 </View>
+              </View>
+          </View>
+
+          <View style={styles.tableHeader}>
+             <Users size={18} color={colors.primary} />
+             <Text style={styles.tableTitle}>Rekap Absensi</Text>
+             <View style={{ flexDirection: 'row', gap: 6 }}>
+                <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
+                    <Download size={14} color="#fff" />
+                    <Text style={styles.exportText}>Harian</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.exportBtn, { backgroundColor: colors.info }]} onPress={handleExportMonthly}>
+                    <Calendar size={14} color="#fff" />
+                    <Text style={styles.exportText}>Bulanan</Text>
+                </TouchableOpacity>
+             </View>
+          </View>
+          {classStudents.length === 0 && (
+            <View style={styles.cardTable}>
+               <Text style={styles.emptyTable}>Pilih kelas untuk rekap</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* --- STUDENT DASHBOARD (MyUnpam Inspired) --- */}
+      {user?.role === 'student' && (
+        <View style={styles.studentLayout}>
+          {!isVerified ? (
+            <View style={styles.verifyBox}>
+              <ShieldAlert size={40} color={colors.warning} />
+              <Text style={styles.verifyTitle}>Belum Verifikasi</Text>
+              <Text style={styles.verifySub}>Hubungkan Telegram untuk dapat melakukan absensi digital.</Text>
+              <TouchableOpacity style={styles.verifyBtn} onPress={handleVerifyTelegram}>
+                <Text style={styles.verifyBtnText}>Buka Bot Telegram</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <AcademicBanner />
+              <AttendanceStatsCard />
+              
+              <View style={styles.premiumScanCard}>
+                 <View style={styles.scanHeader}>
+                    <View style={styles.scanIconBox}>
+                      <Scan size={20} color={colors.primary} />
+                    </View>
+                    <View>
+                      <Text style={styles.scanTitle}>Presensi Kehadiran</Text>
+                      <Text style={styles.scanSub}>Gunakan kamera untuk scan QR Guru</Text>
+                    </View>
+                 </View>
+                 
+                 {scanStatus === 'success' ? (
+                   <View style={styles.scanSuccess}>
+                      <CheckCircle2 size={60} color={colors.success} />
+                      <Text style={styles.successTitle}>Berhasil!</Text>
+                      <Text style={styles.successSub}>{scanMessage}</Text>
+                      <TouchableOpacity onPress={() => setScanStatus('idle')} style={styles.resetBtn}>
+                        <Text style={styles.resetText}>Absen Sesi Lain?</Text>
+                      </TouchableOpacity>
+                   </View>
+                 ) : (
+                   <View style={styles.scannerWrapper}>
+                      {!permission?.granted ? (
+                        <View style={styles.noPerms}>
+                          <Text style={styles.permText}>Izin kamera dibutuhkan untuk scan QR</Text>
+                          <TouchableOpacity onPress={requestPermission} style={styles.permBtn}>
+                            <Text style={styles.permBtnText}>Beri Izin Sekarang</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <CameraView 
+                          style={styles.camera} 
+                          onBarcodeScanned={scanStatus === 'idle' ? handleScan : undefined}
+                          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+                        >
+                          <View style={styles.scannerOverlay}>
+                            <View style={styles.scanFrameBox} />
+                          </View>
+                        </CameraView>
+                      )}
+                   </View>
+                 )}
+              </View>
+
+              <StudentActivityList />
+
+              <View style={styles.tipBox}>
+                <MapPin size={18} color={colors.info} />
+                <Text style={styles.tipText}>
+                  Geofencing aktif. Pastikan GPS HP Anda aktif agar lokasi dapat divalidasi oleh sistem.
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
+      )}
+    </View>
+  );
+
+  const renderStudentRow = ({ item, index }: { item: any, index: number }) => (
+    <View style={[styles.tableRow, index === classStudents.length - 1 && { borderBottomWidth: 0 }]}>
+      <View style={styles.rowInfo}>
+        <Text style={styles.rowName}>{item.full_name}</Text>
+        <Text style={styles.rowNis}>NIS: {item.nis}</Text>
+      </View>
+      <View style={styles.rowAction}>
+        <TouchableOpacity 
+          style={[styles.statusBadge, { backgroundColor: studentStatuses[item.id] ? STATUS_OPTIONS.find(o => o.value === studentStatuses[item.id])?.color + '20' : colors.border + '20' }]}
+          onPress={() => {
+            setSelectedStudent(item);
+            setShowStatusModal(true);
+          }}
+        >
+          <Text style={[styles.statusText, { color: studentStatuses[item.id] ? STATUS_OPTIONS.find(o => o.value === studentStatuses[item.id])?.color : colors.textSub }]}>
+            {(studentStatuses[item.id] || 'ALPHA').toUpperCase()}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderFooter = () => (
+    <View style={{ paddingBottom: 60 }}>
+      {user?.role !== 'student' && (
+        <View style={styles.sysStatusRow}>
+          <View style={styles.sysCard}>
+            <View style={[styles.statIconBox, { backgroundColor: colors.success + '15' }]}>
+              <RefreshCw size={20} color={colors.success} />
+            </View>
+            <View>
+              <Text style={styles.sysTitle}>Live Updates</Text>
+              <Text style={styles.sysSub}>Sinkronisasi real-time aktif</Text>
+            </View>
+          </View>
+        </View>
+      )}
+    </View>
+  );
 
   if (!user || refreshing || isVerified === null) {
     return (
@@ -433,355 +798,98 @@ export default function HomeScreen() {
           </View>
       </Modal>
 
-      <ScrollView 
+      <FlatList
+        data={user?.role === 'teacher' ? classStudents : []}
+        renderItem={user?.role === 'teacher' ? renderStudentRow : null}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderFooter}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={fetchInitialData} tintColor={colors.primary} />
+        }
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchInitialData} tintColor={colors.primary} />}
-      >
-        <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity style={styles.avatarWrapper} onPress={() => setShowProfileMenu(true)}>
-                {profile?.avatar_url ? (
-                  <Image source={{ uri: profile.avatar_url }} style={styles.avatarImg} />
-                ) : (
-                  <User size={24} color={colors.primary} />
-                )}
-                <View style={[styles.statusDot, { backgroundColor: isVerified ? colors.success : colors.warning }]} />
-              </TouchableOpacity>
-              <View>
-                <Text style={styles.greeting}>Selamat datang,</Text>
-                <Text style={styles.name}>{profile?.full_name || user?.fullName}</Text>
-              </View>
-            </View>
-            <View style={styles.headerRight}>
-               <TouchableOpacity onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')} style={styles.iconBtn}>
-                  {theme === 'dark' ? <Sun size={20} color={colors.warning} /> : <Moon size={20} color={colors.textSub} />}
-               </TouchableOpacity>
-               <TouchableOpacity 
-                 onPress={() => Alert.alert('Logout', 'Yakin ingin keluar?', [
-                   { text: 'Batal', style: 'cancel' },
-                   { text: 'Keluar', style: 'destructive', onPress: logout }
-                 ])} 
-                 style={styles.iconBtn}
-               >
-                  <LogOut size={20} color={colors.danger} />
-               </TouchableOpacity>
-            </View>
-        </View>
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
+      />
 
-        {/* --- ACCOUNT MENU MODAL (Web Parity) --- */}
-        <Modal visible={showProfileMenu} animationType="slide" transparent={true}>
-            <View style={styles.menuOverlay}>
-                <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowProfileMenu(false)} />
-                <View style={styles.menuSheet}>
-                    <View style={styles.sheetHandle} />
-                    <Text style={styles.sheetTitle}>Menu Akun</Text>
-                    
-                    <TouchableOpacity 
-                      style={styles.sheetItem} 
-                      onPress={() => {
-                        setShowProfileMenu(false);
-                        router.push('/profile');
-                      }}
-                    >
-                        <View style={[styles.sheetIconBox, { backgroundColor: colors.primary + '15' }]}>
-                          <User size={20} color={colors.primary} />
-                        </View>
-                        <View>
-                          <Text style={styles.sheetItemTitle}>Pengaturan Profil</Text>
-                          <Text style={styles.sheetItemSub}>Ganti foto, nama & password</Text>
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                      style={[styles.sheetItem, { borderBottomWidth: 0 }]} 
-                      onPress={() => {
-                        setShowProfileMenu(false);
-                        Alert.alert('Logout', 'Yakin ingin keluar?', [
-                          { text: 'Batal', style: 'cancel' },
-                          { text: 'Keluar', style: 'destructive', onPress: logout }
-                        ]);
-                      }}
-                    >
-                        <View style={[styles.sheetIconBox, { backgroundColor: colors.danger + '15' }]}>
-                          <LogOut size={20} color={colors.danger} />
-                        </View>
-                        <View>
-                          <Text style={[styles.sheetItemTitle, { color: colors.danger }]}>Keluar Aplikasi</Text>
-                          <Text style={styles.sheetItemSub}>Selesaikan sesi Anda</Text>
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.sheetCloseBtn} onPress={() => setShowProfileMenu(false)}>
-                        <Text style={styles.sheetCloseText}>Tutup</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </Modal>
-
-        {/* --- ADMIN DASHBOARD --- */}
-        {user.role === 'admin' && (
-          <View style={styles.adminLayout}>
-            {/* System Stats Grid */}
-            <View style={styles.statsGrid}>
-              {[
-                { label: 'Total Guru', val: adminStats.teachers, icon: Users, color: '#3B82F6', bg: '#EFF6FF' },
-                { label: 'Total Siswa', val: adminStats.students, icon: GraduationCap, color: '#10B981', bg: '#ECFDF5' },
-                { label: 'Total Kelas', val: adminStats.classes, icon: BookOpen, color: '#F59E0B', bg: '#FFF7ED' },
-                { label: 'Presensi', val: adminStats.todayAttendance, icon: CheckCircle2, color: '#6366F1', bg: '#EEF2FF' },
-              ].map((s, idx) => (
-                <View key={idx} style={[styles.statCard, { borderLeftColor: s.color }]}>
-                  <View style={[styles.statIconBox, { backgroundColor: s.bg }]}>
-                    <s.icon size={18} color={s.color} />
-                  </View>
-                  <Text style={styles.statVal}>{s.val}</Text>
-                  <Text style={styles.statLabel}>{s.label}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Launchpad Quick Actions */}
-            <View style={styles.sectionHeader}>
-              <Maximize2 size={18} color={colors.primary} />
-              <Text style={styles.tableTitle}>Admin Launchpad</Text>
-            </View>
-            <View style={styles.launchpadGrid}>
-              {[
-                { name: 'Data Guru', icon: User, color: '#3B82F6', route: '/admin/teachers' },
-                { name: 'Data Siswa', icon: GraduationCap, color: '#10B981', route: '/admin/students' },
-                { name: 'Data Kelas', icon: BookOpen, color: '#F59E0B', route: '/admin/classes' },
-                { name: 'Mata Pelajaran', icon: FileText, color: '#6366F1', route: '/admin/subjects' },
-                { name: 'Broadcast', icon: Megaphone, color: '#EC4899', route: '/admin/broadcast' },
-                { name: 'Radius & Lokasi', icon: MapPin, color: '#F59E0B', route: '/admin/settings' },
-                { name: 'Jadwal Pelajaran', icon: CalendarCheck, color: '#8B5CF6', route: '/admin/schedules' },
-              ].map((item, idx) => (
-                <TouchableOpacity 
-                  key={idx} 
-                  style={styles.launchItem} 
-                  onPress={() => item.route ? router.push(item.route as any) : Alert.alert('Info', `${item.name} (Dalam Pengembangan)`)}
-                >
-                  <View style={[styles.launchIconBox, { backgroundColor: item.color + '15' }]}>
-                    <item.icon size={24} color={item.color} />
-                  </View>
-                  <Text style={styles.launchName}>{item.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* System Status */}
-            <View style={styles.sysStatusRow}>
-               <View style={styles.sysCard}>
-                  <CheckCircle2 size={24} color={colors.success} />
-                  <View>
-                    <Text style={styles.sysTitle}>Database Layer</Text>
-                    <Text style={styles.sysSub}>Connected & Optimized</Text>
-                  </View>
-               </View>
-               <View style={styles.sysCard}>
-                  <RefreshCw size={24} color={colors.primary} />
-                  <View>
-                    <Text style={styles.sysTitle}>Live Updates</Text>
-                    <Text style={styles.sysSub}>Sync Mode Active</Text>
-                  </View>
-               </View>
-            </View>
-          </View>
-        )}
-
-        {/* --- TEACHER DASHBOARD --- */}
-        {user.role === 'teacher' && (
-          <View style={styles.teacherLayout}>
-            {/* 1. Session Selector */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <BookOpen size={18} color={colors.primary} />
-                <Text style={styles.cardTitle}>Pilih Kelas & Mata Pelajaran</Text>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sessionScroll}>
-                {scheduleSubjects.map((s, idx) => (
+      {/* --- ACCOUNT MENU MODAL (Web Parity) --- */}
+      <Modal visible={showProfileMenu} animationType="slide" transparent={true}>
+          <View style={styles.menuOverlay}>
+              <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowProfileMenu(false)} />
+              <View style={styles.menuSheet}>
+                  <View style={styles.sheetHandle} />
+                  <Text style={styles.sheetTitle}>Menu Akun</Text>
+                  
                   <TouchableOpacity 
-                    key={idx} 
-                    style={[styles.sessionChip, sessionName === `${s.class_name} - ${s.subject}` && styles.activeChip]}
+                    style={styles.sheetItem} 
                     onPress={() => {
-                      setSessionName(`${s.class_name} - ${s.subject}`);
-                      setSelectedClass(s.class_name);
+                      setShowProfileMenu(false);
+                      router.push('/profile');
                     }}
                   >
-                    <Text style={[styles.chipText, sessionName === `${s.class_name} - ${s.subject}` && styles.activeChipText]}>
-                      {s.class_name} • {s.subject}
-                    </Text>
+                      <View style={[styles.sheetIconBox, { backgroundColor: colors.primary + '15' }]}>
+                        <User size={20} color={colors.primary} />
+                      </View>
+                      <View>
+                        <Text style={styles.sheetItemTitle}>Pengaturan Profil</Text>
+                        <Text style={styles.sheetItemSub}>Ganti foto, nama & password</Text>
+                      </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.sheetItem, { borderBottomWidth: 0 }]} 
+                    onPress={() => {
+                      setShowProfileMenu(false);
+                      Alert.alert('Logout', 'Yakin ingin keluar?', [
+                        { text: 'Batal', style: 'cancel' },
+                        { text: 'Keluar', style: 'destructive', onPress: logout }
+                      ]);
+                    }}
+                  >
+                      <View style={[styles.sheetIconBox, { backgroundColor: colors.danger + '15' }]}>
+                        <LogOut size={20} color={colors.danger} />
+                      </View>
+                      <View>
+                        <Text style={[styles.sheetItemTitle, { color: colors.danger }]}>Keluar Aplikasi</Text>
+                        <Text style={styles.sheetItemSub}>Selesaikan sesi Anda</Text>
+                      </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.sheetCloseBtn} onPress={() => setShowProfileMenu(false)}>
+                      <Text style={styles.sheetCloseText}>Tutup</Text>
+                  </TouchableOpacity>
+              </View>
+          </View>
+      </Modal>
+
+      {/* STATUS PICKER MODAL */}
+      <Modal visible={showStatusModal} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.pickerModal}>
+              <Text style={styles.pickerTitle}>Ubah Status: {selectedStudent?.full_name}</Text>
+              <View style={styles.statusGrid}>
+                {STATUS_OPTIONS.map(opt => (
+                  <TouchableOpacity 
+                    key={opt.value} 
+                    style={[styles.statusOption, { borderColor: opt.color + '40' }]}
+                    onPress={() => {
+                      updateStudentStatus(selectedStudent?.id, opt.value);
+                      setShowStatusModal(false);
+                    }}
+                  >
+                    <View style={[styles.dot, { backgroundColor: opt.color }]} />
+                    <Text style={[styles.optLabel, { color: opt.color }]}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
-            </View>
-
-            {/* 2. QR Generator Card */}
-            <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <QrCode size={18} color={colors.primary} />
-                  <Text style={styles.cardTitle}>Attendance QR</Text>
-                </View>
-                <View style={styles.qrContent}>
-                   <View style={styles.qrContainer}>
-                     <QRCode value={qrValue || 'HADIR_INACTIVE'} size={180} />
-                   </View>
-                   <View style={styles.qrMeta}>
-                     <View style={styles.timerBox}>
-                        <Clock size={16} color={colors.textSub} />
-                        <Text style={styles.timerText}>{timeLeft}s</Text>
-                     </View>
-                     <View style={styles.miniProgress}>
-                        <View style={[styles.miniFill, { width: `${(timeLeft/30)*100}%` }]} />
-                     </View>
-                     <View style={styles.qrActions}>
-                        <TouchableOpacity style={styles.qrBtn} onPress={generateQR}>
-                          <RefreshCw size={18} color={colors.primary} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.qrBtn, { backgroundColor: colors.primary }]} onPress={() => setIsFullscreen(true)}>
-                          <Maximize2 size={18} color="#fff" />
-                        </TouchableOpacity>
-                     </View>
-                   </View>
-                </View>
-            </View>
-
-            {/* 3. Rekap Absensi Table */}
-            <View style={styles.tableHeader}>
-               <Users size={18} color={colors.primary} />
-               <Text style={styles.tableTitle}>Rekap Absensi</Text>
-               <View style={{ flexDirection: 'row', gap: 6 }}>
-                  <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
-                      <Download size={14} color="#fff" />
-                      <Text style={styles.exportText}>Harian</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.exportBtn, { backgroundColor: colors.info }]} onPress={handleExportMonthly}>
-                      <Calendar size={14} color="#fff" />
-                      <Text style={styles.exportText}>Bulanan</Text>
-                  </TouchableOpacity>
-               </View>
-            </View>
-
-            <View style={styles.cardTable}>
-               {classStudents.length > 0 ? (
-                 classStudents.map((s, idx) => (
-                   <View key={idx} style={[styles.tableRow, idx === classStudents.length - 1 && { borderBottomWidth: 0 }]}>
-                      <View style={styles.rowInfo}>
-                        <Text style={styles.rowName}>{s.full_name}</Text>
-                        <Text style={styles.rowNis}>NIS: {s.nis}</Text>
-                      </View>
-                      <View style={styles.rowAction}>
-                        <TouchableOpacity 
-                          style={[styles.statusBadge, { backgroundColor: studentStatuses[s.id] ? STATUS_OPTIONS.find(o => o.value === studentStatuses[s.id])?.color + '20' : colors.border + '20' }]}
-                          onPress={() => {
-                            setSelectedStudent(s);
-                            setShowStatusModal(true);
-                          }}
-                        >
-                           <Text style={[styles.statusText, { color: studentStatuses[s.id] ? STATUS_OPTIONS.find(o => o.value === studentStatuses[s.id])?.color : colors.textSub }]}>
-                             {(studentStatuses[s.id] || 'ALPHA').toUpperCase()}
-                           </Text>
-                        </TouchableOpacity>
-                      </View>
-                   </View>
-                 ))
-               ) : (
-                 <Text style={styles.emptyTable}>Pilih kelas untuk rekap</Text>
-               )}
-            </View>
-          </View>
-        )}
-
-        {/* --- STUDENT DASHBOARD --- */}
-        {user.role === 'student' && (
-          <View style={styles.studentLayout}>
-            {/* 1. Status Overlay if not verified */}
-            {!isVerified && (
-              <View style={styles.verifyBox}>
-                <ShieldAlert size={40} color={colors.warning} />
-                <Text style={styles.verifyTitle}>Belum Verifikasi</Text>
-                <Text style={styles.verifySub}>Hubungkan Telegram untuk absen</Text>
-                <TouchableOpacity style={styles.verifyBtn} onPress={handleVerifyTelegram}>
-                  <Text style={styles.verifyBtnText}>Buka Telegram</Text>
-                </TouchableOpacity>
               </View>
-            )}
-
-            {/* 2. Integrated Scanner */}
-            {isVerified && (
-              <View style={styles.scannerCard}>
-                 <View style={styles.scannerHeader}>
-                    <Scan size={20} color={colors.primary} />
-                    <Text style={styles.scannerTitle}>Scan QR Presensi</Text>
-                 </View>
-                 
-                 {scanStatus === 'success' ? (
-                   <View style={styles.scanSuccess}>
-                      <CheckCircle2 size={60} color={colors.success} />
-                      <Text style={styles.successTitle}>Berhasil!</Text>
-                      <Text style={styles.successSub}>{scanMessage}</Text>
-                      <TouchableOpacity onPress={() => setScanStatus('idle')} style={styles.resetBtn}>
-                        <Text style={styles.resetText}>Absen Sesi Lain?</Text>
-                      </TouchableOpacity>
-                   </View>
-                 ) : (
-                   <View style={styles.scannerContainer}>
-                      {!permission?.granted ? (
-                        <View style={styles.noPerms}>
-                          <Text style={styles.permText}>Izin kamera dibutuhkan</Text>
-                          <TouchableOpacity onPress={requestPermission} style={styles.permBtn}>
-                            <Text style={styles.permBtnText}>Beri Izin</Text>
-                          </TouchableOpacity>
-                        </View>
-                      ) : (
-                        <CameraView 
-                          style={styles.camera} 
-                          onBarcodeScanned={scanStatus === 'idle' ? handleScan : undefined}
-                          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-                        >
-                          <View style={styles.scanFrame} />
-                        </CameraView>
-                      )}
-                   </View>
-                 )}
-                 <Text style={styles.scanHint}>Arahkan kamera ke QR Code Guru</Text>
-              </View>
-            )}
-
-            {/* 3. Info GPS */}
-            <View style={styles.tipBox}>
-              <MapPin size={18} color={colors.info} />
-              <Text style={styles.tipText}>
-                Pastikan GPS aktif untuk mempermudah validasi lokasi (Geofencing).
-              </Text>
-            </View>
+              <TouchableOpacity onPress={() => setShowStatusModal(false)} style={styles.cancelBtn}>
+                <Text style={styles.cancelText}>Batal</Text>
+              </TouchableOpacity>
           </View>
-        )}
-        {/* STATUS PICKER MODAL */}
-        <Modal visible={showStatusModal} transparent animationType="fade">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.pickerModal}>
-               <Text style={styles.pickerTitle}>Ubah Status: {selectedStudent?.full_name}</Text>
-               <View style={styles.statusGrid}>
-                  {STATUS_OPTIONS.map(opt => (
-                    <TouchableOpacity 
-                      key={opt.value} 
-                      style={[styles.statusOption, { borderColor: opt.color + '40' }]}
-                      onPress={() => {
-                        updateStudentStatus(selectedStudent?.id, opt.value);
-                        setShowStatusModal(false);
-                      }}
-                    >
-                      <View style={[styles.dot, { backgroundColor: opt.color }]} />
-                      <Text style={[styles.optLabel, { color: opt.color }]}>{opt.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-               </View>
-               <TouchableOpacity onPress={() => setShowStatusModal(false)} style={styles.cancelBtn}>
-                  <Text style={styles.cancelText}>Batal</Text>
-               </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1328,34 +1436,76 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 16,
     marginTop: 10,
   },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: colors.text,
+  },
   launchpadGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  bentoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
-  launchItem: {
-    width: (width - 64) / 3,
+  bentoItem: {
     backgroundColor: colors.card,
-    borderRadius: RADIUS.xl,
+    borderRadius: 24,
     padding: 16,
-    alignItems: 'center',
-    ...SHADOW.card,
     borderWidth: 1,
     borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...SHADOW.sm,
   },
-  launchIconBox: {
+  bentoItemSmall: {
+    width: (width - 52) / 2,
+  },
+  bentoItemLarge: {
+    width: width - 40,
+  },
+  bentoIconBox: {
     width: 48,
     height: 48,
-    borderRadius: RADIUS.lg,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
   },
-  launchName: {
-    fontSize: 10,
-    fontWeight: '900',
+  bentoContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  bentoName: {
+    fontSize: 13,
+    fontWeight: '800',
     color: colors.text,
-    textAlign: 'center',
+  },
+  bentoDesc: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.textSub,
+    marginTop: 2,
+  },
+  bentoArrow: {
+    marginLeft: 4,
+  },
+  adminBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginRight: 8,
+  },
+  adminBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
   },
   sysStatusRow: {
     marginTop: 24,
@@ -1372,9 +1522,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderColor: colors.border,
   },
   sysTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '900',
     color: colors.text,
+    fontStyle: 'italic',
+    textTransform: 'uppercase',
   },
   sysSub: {
     fontSize: 12,
@@ -1445,5 +1597,204 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: colors.textSub,
+  },
+  // --- New "MyUnpam" Styles ---
+  academicBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: RADIUS.xl,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...SHADOW.sm,
+  },
+  bannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bannerContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  bannerTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: colors.text,
+    fontStyle: 'italic',
+    textTransform: 'uppercase',
+    letterSpacing: -0.5,
+  },
+  bannerText: {
+    fontSize: 11,
+    color: colors.textSub,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  bannerClose: {
+    padding: 4,
+  },
+  statsBentoGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  statsBentoItem: {
+    flex: 1,
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statsBentoIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statsBentoVal: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: colors.text,
+    fontStyle: 'italic',
+    letterSpacing: -1,
+  },
+  statsBentoLabel: {
+    fontSize: 10,
+    color: colors.textSub,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  premiumScanCard: {
+    backgroundColor: colors.card,
+    borderRadius: 32,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...SHADOW.card,
+  },
+  scanHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  scanIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: colors.text,
+    fontStyle: 'italic',
+    textTransform: 'uppercase',
+    letterSpacing: -0.5,
+  },
+  scanSub: {
+    fontSize: 11,
+    color: colors.textSub,
+    fontWeight: '600',
+  },
+  scannerWrapper: {
+    width: '100%',
+    height: 320,
+    borderRadius: 24,
+    backgroundColor: '#000',
+    overflow: 'hidden',
+    borderWidth: 4,
+    borderColor: colors.bg,
+  },
+  scannerOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  scanFrameBox: {
+    width: 220,
+    height: 220,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  activitySection: {
+    marginBottom: 20,
+  },
+  activityCard: {
+    backgroundColor: colors.card,
+    borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: 12,
+  },
+  activityIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  activityInfo: {
+    flex: 1,
+  },
+  activityTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  activityTime: {
+    fontSize: 10,
+    color: colors.textSub,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  debugBanner: {
+    backgroundColor: colors.warning + '15',
+    padding: 12,
+    borderRadius: RADIUS.lg,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.warning + '30',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  debugText: {
+    color: colors.warning,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  cardTableContainer: {
+    backgroundColor: colors.card,
+    borderRadius: RADIUS.xl,
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    marginBottom: 20,
   },
 });

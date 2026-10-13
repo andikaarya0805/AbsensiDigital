@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator,
 import { useTheme } from '../../context/ThemeContext';
 import { ChevronLeft, Send, Megaphone, AlertCircle, Info } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { CONFIG } from '../../constants/Config';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://absensi-digital-i87xnkg8j-andikaarya0805s-projects.vercel.app';
+const API_URL = CONFIG.API_URL;
 
 export default function BroadcastScreen() {
     const { colors } = useTheme();

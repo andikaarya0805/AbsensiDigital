@@ -86,81 +86,114 @@ export default function AdminDashboardPage() {
     return (
         <div className="space-y-10 py-6">
             {/* Page Header */}
-            <div>
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">System Overview</h1>
-                <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">Monitoring and managing HadirMu academic data.</p>
+            <div className="bg-linear-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-black p-10 rounded-[40px] border border-slate-800 shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] -mr-48 -mt-48 group-hover:bg-blue-500/20 transition-all duration-1000"></div>
+                <div className="relative z-10">
+                    <span className="inline-block bg-blue-600 text-[10px] font-black uppercase tracking-[0.3em] px-3 py-1 rounded-full mb-4 text-white">Administrator</span>
+                    <h1 className="text-5xl font-black text-white tracking-tighter italic uppercase leading-none">Ringkasan<br/><span className="text-slate-400 not-italic">Sistem</span></h1>
+                    <p className="text-slate-400 font-medium mt-4 max-w-lg leading-relaxed">Memantau dan mengelola ekosistem digital sekolah HadirMu secara terpusat dan real-time.</p>
+                </div>
             </div>
 
-            {/* Stats Grid */}
+            {/* Stats Grid - Bento Style */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {statCards.map((card) => (
-                    <div key={card.name} className="bg-white dark:bg-slate-900 p-7 rounded-[28px] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300 group">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className={`${card.bg} p-4 rounded-2xl group-hover:scale-110 transition-transform duration-300`}>
-                                <card.icon className={`h-6 w-6 ${card.color}`} />
+                    <div key={card.name} className="bg-white dark:bg-slate-900 p-10 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 group relative overflow-hidden flex flex-col justify-between min-h-[240px]">
+                        <div className={`absolute top-0 right-0 w-40 h-40 ${card.bg} opacity-[0.05] -mr-20 -mt-20 rounded-full group-hover:scale-150 transition-transform duration-700`}></div>
+                        
+                        <div className="flex items-center justify-between relative z-10">
+                            <div className={`${card.bg} p-5 rounded-2xl group-hover:rotate-12 transition-transform duration-500 shadow-sm`}>
+                                <card.icon className={`h-8 w-8 ${card.color}`} />
                             </div>
-                            <button className="text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400">
-                                <MoreHorizontal className="h-5 w-5" />
-                            </button>
+                            <div className={`flex items-center gap-1 text-[10px] font-black px-3 py-1.5 rounded-full ${card.trend.includes('+') ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}>
+                                {card.trend.includes('+') ? <ArrowUpRight className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}
+                                {card.trend}
+                            </div>
                         </div>
-                        <div className="space-y-1">
-                            <p className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{card.name}</p>
-                            <div className="flex items-end gap-3">
-                                <h3 className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{card.value}</h3>
-                                <div className={`flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full mb-1 ${card.trend.includes('+') ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}>
-                                    {card.trend.includes('+') ? <ArrowUpRight className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
-                                    {card.trend}
-                                </div>
-                            </div>
+                        
+                        <div className="space-y-1 relative z-10">
+                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{card.name}</p>
+                            <h3 className="text-5xl font-black text-slate-900 dark:text-white tabular-nums tracking-tighter italic">{card.value}</h3>
                         </div>
                     </div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Quick Actions */}
-                <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl shadow-slate-200/60 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform duration-500">
-                        <Settings className="h-24 w-24" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Aksi Cepat - Bento Big Card */}
+                <div className="lg:col-span-2 bg-slate-900 dark:bg-black rounded-[40px] p-10 text-white shadow-2xl shadow-slate-200/60 dark:shadow-none relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:scale-125 group-hover:rotate-12 transition-all duration-700">
+                        <Settings className="h-48 w-48 text-white" />
                     </div>
-                    <div className="relative z-10">
-                        <h3 className="text-lg font-black tracking-tight mb-2">Quick Actions</h3>
-                        <p className="text-slate-400 text-xs font-medium mb-6">Kelola data akademik dengan cepat.</p>
+                    
+                    <div className="relative z-10 max-w-md">
+                        <span className="inline-block bg-blue-600 text-[10px] font-black uppercase tracking-[0.3em] px-3 py-1 rounded-full mb-6">Manajemen</span>
+                        <h3 className="text-3xl font-black tracking-tighter mb-3 italic">Aksi Cepat</h3>
+                        <p className="text-slate-400 text-sm font-medium mb-10 leading-relaxed">Akses kontrol instan untuk mengelola seluruh ekosistem digital sekolah dengan satu sentuhan.</p>
 
-                        <div className="space-y-3">
-                            <Link href="/dashboard/admin/teachers?action=new" className="w-full bg-white/10 hover:bg-white/20 text-white rounded-2xl py-3 px-4 text-sm font-bold transition-all text-left flex items-center gap-3 border border-white/5">
-                                <Users className="h-4 w-4" /> Tambah Guru Baru
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Link href="/dashboard/admin/teachers?action=new" className="group/btn bg-white/5 hover:bg-white/10 text-white rounded-[24px] p-5 transition-all border border-white/5 flex items-start gap-4">
+                                <div className="bg-white/10 p-3 rounded-xl group-hover/btn:bg-blue-600 transition-colors">
+                                    <Users className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="font-black text-sm">Tambah Guru</p>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-0.5 uppercase tracking-wider">Database Guru</p>
+                                </div>
                             </Link>
-                            <Link href="/dashboard/admin/students?action=new" className="w-full bg-white/10 hover:bg-white/20 text-white rounded-2xl py-3 px-4 text-sm font-bold transition-all text-left flex items-center gap-3 border border-white/5">
-                                <GraduationCap className="h-4 w-4" /> Tambah Siswa Baru
+                            <Link href="/dashboard/admin/students?action=new" className="group/btn bg-white/5 hover:bg-white/10 text-white rounded-[24px] p-5 transition-all border border-white/5 flex items-start gap-4">
+                                <div className="bg-white/10 p-3 rounded-xl group-hover/btn:bg-emerald-600 transition-colors">
+                                    <GraduationCap className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="font-black text-sm">Tambah Siswa</p>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-0.5 uppercase tracking-wider">Database Siswa</p>
+                                </div>
                             </Link>
-                            <Link href="/dashboard/admin/schedules?action=new" className="w-full bg-white/10 hover:bg-white/20 text-white rounded-2xl py-3 px-4 text-sm font-bold transition-all text-left flex items-center gap-3 border border-white/5">
-                                <CalendarCheck className="h-4 w-4" /> Susun Jadwal
+                            <Link href="/dashboard/admin/schedules?action=new" className="group/btn bg-white/5 hover:bg-white/10 text-white rounded-[24px] p-5 transition-all border border-white/5 flex items-start gap-4 sm:col-span-2">
+                                <div className="bg-white/10 p-3 rounded-xl group-hover/btn:bg-indigo-600 transition-colors">
+                                    <CalendarCheck className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="font-black text-sm">Susun Jadwal Pelajaran</p>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-0.5 uppercase tracking-wider">Plotting Tahun Ajaran</p>
+                                </div>
                             </Link>
                         </div>
                     </div>
                 </div>
 
-                {/* System Status */}
-                <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-center">
-                    <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight mb-8">System Status</h3>
-                    <div className="space-y-8">
-                        <div className="flex items-center gap-5">
-                            <div className="h-12 w-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-900/50 shadow-sm">
-                                <CheckCircle2 className="h-6 w-6" />
+                {/* System Status - Bento Side Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-[40px] p-10 border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter mb-10 italic">Status Sistem</h3>
+                    
+                    <div className="space-y-10">
+                        <div className="flex items-start gap-5">
+                            <div className="h-14 w-14 bg-emerald-50 dark:bg-emerald-900/30 rounded-[22px] flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50 shadow-sm shrink-0">
+                                <CheckCircle2 className="h-7 w-7" />
                             </div>
                             <div>
-                                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Database Layer</p>
-                                <p className="text-base font-black text-slate-900 dark:text-white">Connected & Optimized</p>
+                                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5">Database Layer</p>
+                                <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Terhubung & Optimal</p>
+                                <p className="text-xs text-slate-500 mt-1 font-medium italic">Sinkronisasi Real-time aktif</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-5">
-                            <div className="h-12 w-12 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100/50 dark:border-blue-900/50 shadow-sm">
-                                <Clock className="h-6 w-6" />
+                        
+                        <div className="flex items-start gap-5">
+                            <div className="h-14 w-14 bg-blue-50 dark:bg-blue-900/30 rounded-[22px] flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50 shadow-sm shrink-0">
+                                <Clock className="h-7 w-7" />
                             </div>
                             <div>
-                                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Last Data Sync</p>
-                                <p className="text-base font-black text-slate-900 dark:text-white">Live Updates Enabled</p>
+                                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5">Sync Terakhir</p>
+                                <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Baru Saja Diperbarui</p>
+                                <p className="text-xs text-slate-500 mt-1 font-medium italic">Otomatisasi Polling aktif</p>
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Health Score</span>
+                                <span className="text-lg font-black text-emerald-600">99.8%</span>
                             </div>
                         </div>
                     </div>
